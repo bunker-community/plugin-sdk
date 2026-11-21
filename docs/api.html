@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunker Plugin SDK (@bunker-community/plugin-sdk 0.1.4)</title>
+<style>
+:root { --bg:#ffffff; --text:#1f2328; --muted:#59636e; --line:#d8dee4; --soft:#f6f8fa; --accent:#5b5bd6; --code:#eff1f3; }
+@media (prefers-color-scheme: dark) { :root:not([data-print]) { --bg:#16171a; --text:#e6e7ea; --muted:#9aa0a8; --line:#2c2e33; --soft:#1d1f23; --accent:#8b8bff; --code:#24262b; } }
+* { box-sizing: border-box; }
+html { scroll-padding-top: 64px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: var(--bg); border-bottom: 1px solid var(--line); }
+header b { font-size: 15px; }
+header .sp { flex: 1; }
+header a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+header a:hover, header a.on { color: var(--text); background: var(--soft); }
+main { max-width: 920px; margin: 0 auto; padding: 24px 24px 80px; }
+h1 { font-size: 30px; line-height: 1.25; margin: 8px 0 12px; }
+h2 { font-size: 22px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 17px; margin: 28px 0 8px; }
+h4 { font-size: 15px; margin: 20px 0 6px; }
+h1 code, h2 code, h3 code { font-size: .9em; }
+a { color: var(--accent); }
+p, li { overflow-wrap: anywhere; }
+hr { display: none; }
+code { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+pre code { background: none; padding: 0; white-space: pre; }
+.tw { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border: 1px solid var(--line); }
+th { background: var(--soft); font-weight: 600; }
+blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--accent); background: var(--soft); color: var(--muted); }
+@media (max-width: 640px) { main { padding: 16px; } header { padding: 10px 16px; } h1 { font-size: 24px; } }
+@media print {
+  header { display: none; }
+  main { max-width: none; padding: 0; }
+  body { font-size: 11pt; }
+  h2 { break-after: avoid; } pre, table, blockquote { break-inside: avoid; }
+  pre { white-space: pre-wrap; } pre code { white-space: pre-wrap; }
+  a { color: inherit; text-decoration: none; }
+}
+@page { margin: 16mm 14mm; }
+</style>
+</head>
+<body>
+<header><b>Bunker Plugin SDK</b><span class="muted">0.1.4</span><span class="sp"></span>
+<a href="./" class="on">Türkçe</a><a href="en">English</a>
+<a href="bunker-plugin-api.pdf">PDF</a></header>
+<main>
+<h1 id="bunker-plugin-sdk-bunker-communityplugin-sdk-014">Bunker Plugin SDK (<code>@bunker-community/plugin-sdk</code> 0.1.4)</h1>
+<p>Bunker'a bot / plugin yazmak için API belgesi.</p>
+<p>Bir plugin iki şekilde çalışır, <strong>kodu ve arayüzü aynıdır</strong> (<code>definePlugin({ setup(ctx) {…} })</code>):</p>
+<div class="tw"><table><thead><tr><th></th><th>Uzak plugin (herkes)</th><th>Bunker içinde (birinci taraf)</th></tr></thead><tbody><tr><td>Kod nerede çalışır</td><td>Senin bilgisayarında / sunucunda, ya da onaylanınca Bunker'da kısıtlı süreçte (<a href="#bunkerda-çalıştırma-barındırma">barındırma</a>)</td><td>Bunker sunucusunda, <code>plugins/&lt;id&gt;/</code></td></tr><tr><td>Bağlantı</td><td><code>connect(plugin, { token })</code> → geçit (WebSocket)</td><td>Bunker yükler</td></tr><tr><td>Kim ekler</td><td>Kendin: Ayarlar → Geliştirici</td><td>Bunker ekibi (repo + deploy)</td></tr><tr><td>Hangi sunuculara eklenir</td><td>Doğrulanmamışken sadece senin yönettiğin sunuculara; site yöneticisi Store'a alırsa (doğrulandı) herkes</td><td>Site yöneticisi listelerse herkes</td></tr><tr><td>Fark</td><td>Ses kanalına ham PCM gönderemez (<code>playPcm</code> yok); kod kapalıyken bot çevrimdışı görünür</td><td>—</td></tr></tbody></table></div>
+<h2 id="içindekiler">İçindekiler</h2>
+<ol><li><a href="#hızlı-başlangıç">Hızlı başlangıç</a></li><li><a href="#manifest-bunker-pluginjson">Manifest: <code>bunker-plugin.json</code></a></li><li><a href="#izinler">İzinler</a></li><li><a href="#yaşam-döngüsü">Yaşam döngüsü</a></li><li><a href="#plugincontext-ctx"><code>PluginContext</code> (ctx)</a></li><li><a href="#olaylar">Olaylar</a></li><li><a href="#komutlar">Komutlar</a></li><li><a href="#mesaj-gönderme">Mesaj gönderme</a></li><li><a href="#depo">Depo</a></li><li><a href="#ses">Ses</a></li><li><a href="#pencere-panel-arayüzü">Pencere (panel arayüzü)</a></li><li><a href="#bunkerda-çalıştırma-barındırma">Bunker'da çalıştırma (barındırma)</a></li><li><a href="#sınırlar">Sınırlar</a></li><li><a href="#sürümler-ve-uyumluluk">Sürümler ve uyumluluk</a></li><li><a href="#yayınlama-ve-sunucuya-ekleme">Yayınlama ve sunucuya ekleme</a></li><li><a href="#geçit-protokolü-sdksız-bağlanmak">Geçit protokolü (SDK'sız bağlanmak)</a></li><li><a href="#örnekler">Örnekler</a></li></ol>
+<hr>
+<h2 id="hızlı-başlangıç">Hızlı başlangıç</h2>
+<h3 id="uzak-plugin-kendi-bilgisayarında">Uzak plugin (kendi bilgisayarında)</h3>
+<ol><li>Bunker'da <strong>Ayarlar → Geliştirici → Yeni plugin</strong>: ad yaz, &quot;Oluştur&quot;. Çıkan <strong>anahtarı</strong> kopyala (bir kez gösterilir; kaybedersen &quot;Anahtarı yenile&quot;).</li><li>Boş bir klasörde (Node.js 22+):</li></ol>
+<pre><code>npm init -y
+npm install @bunker-community/plugin-sdk</code></pre>
+<p><code>package.json</code>'a <code>&quot;type&quot;: &quot;module&quot;</code> ekle. Klasöre iki dosya:</p>
+<p><code>bunker-plugin.json</code> (id yazma, anahtardan gelir)</p>
+<pre><code>{
+  &quot;name&quot;: &quot;Selam Botu&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;description&quot;: &quot;!selam yazana cevap verir.&quot;,
+  &quot;sdk&quot;: &quot;0.1&quot;,
+  &quot;permissions&quot;: [&quot;events.messages&quot;, &quot;chat.send&quot;, &quot;storage&quot;]
+}</code></pre>
+<p><code>index.js</code></p>
+<pre><code>import { connect, definePlugin } from &quot;@bunker-community/plugin-sdk&quot;;
+
+const plugin = definePlugin({
+  setup(ctx) {
+    ctx.command(&quot;selam&quot;, async (c) =&gt; {
+      const n = ((await ctx.storage.get(`n:${c.uid}`)) ?? 0) + 1;
+      await ctx.storage.set(`n:${c.uid}`, n);
+      await c.reply(`Selam ${c.nick}! (${n}. kez)`);
+    });
+  },
+});
+
+connect(plugin, { token: process.env.BUNKER_TOKEN });</code></pre>
+<ol start="3"><li>Çalıştır: <code>BUNKER_TOKEN=&lt;anahtar&gt; node index.js</code> (PowerShell: <code>$env:BUNKER_TOKEN=&quot;&lt;anahtar&gt;&quot;; node index.js</code>). &quot;bağlandı&quot; yazınca Ayarlar → Geliştirici'de plugin &quot;Bağlı&quot; görünür.</li><li>Kendi sunucunda <strong>Sunucu ayarları → Plugin'ler</strong> (ya da Plugin Store) → Ekle → izinleri onayla. Kanalda <code>!selam</code> yaz.</li></ol>
+<p>TypeScript kullanıyorsan tipler pakette var (<code>import type { PluginContext } from &quot;@bunker-community/plugin-sdk&quot;</code>).</p>
+<p><code>connect(plugin, options)</code>:</p>
+<div class="tw"><table><thead><tr><th>Seçenek</th><th>Açıklama</th></tr></thead><tbody><tr><td><code>token</code></td><td>Zorunlu. Anahtarı koda yazma, ortam değişkeninden oku.</td></tr><tr><td><code>url</code></td><td>Geçit adresi, varsayılan <code>wss://bunker.community/app/api/plugin/gateway</code>.</td></tr><tr><td><code>manifest</code></td><td>Manifest nesnesi. Verilmezse <code>dir</code> içindeki <code>bunker-plugin.json</code> okunur, o da yoksa Bunker'da kayıtlı olan kullanılır.</td></tr><tr><td><code>dir</code></td><td><code>bunker-plugin.json</code> ve pencere sayfasının klasörü (varsayılan çalışma klasörü).</td></tr><tr><td><code>uiPage</code></td><td>Pencere sayfasının HTML'i (verilmezse <code>manifest.ui.page</code> dosyası <code>dir</code>'den okunur).</td></tr><tr><td><code>logger</code></td><td>Bağlantı kayıtları için (varsayılan <code>console</code>).</td></tr></tbody></table></div>
+<p>Döner: <code>{ ready: Promise&lt;void&gt;, connected: boolean, close(): Promise&lt;void&gt; }</code>. Bağlantı koparsa kendiliğinden yeniden bağlanır (1 sn → 30 sn arası bekleyerek), dinleyiciler ve komutlar yeniden kaydedilir. Anahtar geçersiz, plugin kapatılmış, manifest geçersiz ya da aynı anahtarla başka bağlantı açılmışsa yeniden denemez ve <code>ready</code> hata verir.</p>
+<p>Her bağlanışta manifest ve pencere sayfası Bunker'a gönderilir; değiştiyse orada güncellenir. Yeni izin eklediysen, eklendiği sunucularda yeniden onaylanana kadar plugin o sunucularda çalışmaz.</p>
+<p>Kod kapalıyken: bot üye listesinde çevrimdışı görünür, komutlara cevap gelmez, ses oturumları kapanır. Sürekli açık kalması için kodu bir sunucuda (VPS, Raspberry Pi…) <code>pm2</code> ya da systemd ile çalıştır.</p>
+<h3 id="bunker-içinde-birinci-taraf">Bunker içinde (birinci taraf)</h3>
+<pre><code>plugins/selam/
+├── bunker-plugin.json
+├── package.json
+├── tsconfig.json
+└── src/index.ts</code></pre>
+<p><code>bunker-plugin.json</code></p>
+<pre><code>{
+  &quot;id&quot;: &quot;selam&quot;,
+  &quot;name&quot;: &quot;Selam Botu&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;description&quot;: &quot;!selam yazana cevap verir.&quot;,
+  &quot;author&quot;: &quot;Ad Soyad&quot;,
+  &quot;sdk&quot;: &quot;0.1&quot;,
+  &quot;permissions&quot;: [&quot;events.messages&quot;, &quot;chat.send&quot;, &quot;storage&quot;]
+}</code></pre>
+<p><code>package.json</code></p>
+<pre><code>{ &quot;name&quot;: &quot;@bunker/plugin-selam&quot;, &quot;version&quot;: &quot;0.1.0&quot;, &quot;type&quot;: &quot;module&quot;, &quot;private&quot;: true,
+  &quot;dependencies&quot;: { &quot;@bunker-community/plugin-sdk&quot;: &quot;*&quot; } }</code></pre>
+<p><code>tsconfig.json</code></p>
+<pre><code>{ &quot;extends&quot;: &quot;../../tsconfig.base.json&quot;, &quot;include&quot;: [&quot;src&quot;, &quot;*.ts&quot;] }</code></pre>
+<p><code>src/index.ts</code></p>
+<pre><code>import { definePlugin } from &quot;@bunker-community/plugin-sdk&quot;;
+
+export default definePlugin({
+  setup(ctx) {
+    ctx.command(&quot;selam&quot;, async (c) =&gt; {
+      const n = ((await ctx.storage.get&lt;number&gt;(`n:${c.uid}`)) ?? 0) + 1;
+      await ctx.storage.set(`n:${c.uid}`, n);
+      await c.reply(`Selam ${c.nick}! (${n}. kez)`);
+    });
+  },
+});</code></pre>
+<p>Sonra kökte <code>npm install</code>, kökteki <code>package.json</code> → <code>typecheck</code> betiğine klasörü ekle, <code>npm run typecheck</code>. Bunker'ı yeniden başlat → Yönetim paneli → Sistem → Plugin'ler → aç → sunucu ayarlarından ekle. Kod Bunker sürecinde çalıştığı için bu yol sadece Bunker ekibinin yazdığı / incelediği plugin'ler içindir.</p>
+<p>Dosyalar TypeScript, derleme yok (Node 22 tipleri silip çalıştırır). Bu yüzden <code>enum</code>, <code>namespace</code>, parametre özellikleri (<code>constructor(private x)</code>) gibi tip silmeyle çalışmayan söz dizimi kullanma; import'larda <code>.ts</code> uzantısını yaz.</p>
+<hr>
+<h2 id="manifest-bunker-pluginjson">Manifest: <code>bunker-plugin.json</code></h2>
+<div class="tw"><table><thead><tr><th>Alan</th><th>Zorunlu</th><th>Açıklama</th></tr></thead><tbody><tr><td><code>id</code></td><td>evet*</td><td>*Uzak plugin'de yazılmaz (anahtarın plugin'i, <code>ext-xxxxxxxx</code>). Küçük harf, rakam, tire; 2-28 karakter, tireyle başlayıp bitmez. <strong>Klasör adıyla aynı olmalı.</strong> Kalıcı kimlik: depo, ayarlar, bot kimliği buna bağlı; sonradan değiştirme.</td></tr><tr><td><code>name</code></td><td>evet</td><td>Görünen ad, ≤40. Mesajlarda botun adı (sunucu yöneticisi sunucusunda değiştirebilir).</td></tr><tr><td><code>version</code></td><td>evet</td><td><code>x.y.z</code> (isteğe bağlı <code>-beta.1</code> gibi ek).</td></tr><tr><td><code>sdk</code></td><td>evet</td><td>Uyumlu SDK sürümü: <code>&quot;0.1&quot;</code> (bkz. <a href="#sürümler-ve-uyumluluk">Sürümler</a>).</td></tr><tr><td><code>permissions</code></td><td>evet</td><td>İzin dizisi (boş olabilir).</td></tr><tr><td><code>description</code></td><td>hayır</td><td>≤300. Store'da ve sunucu ayarlarında görünür.</td></tr><tr><td><code>author</code></td><td>hayır</td><td>≤80.</td></tr><tr><td><code>main</code></td><td>hayır</td><td>Giriş dosyası, varsayılan <code>src/index.ts</code> (sadece Bunker içindeki plugin'ler).</td></tr><tr><td><code>ui</code></td><td>hayır</td><td>Panel penceresi, bkz. <a href="#pencere-panel-arayüzü">Pencere</a>.</td></tr></tbody></table></div>
+<p>Manifest geçersizse plugin yüklenmez; hatalar yönetim panelinde görünür. Doğrulamayı kendin de yapabilirsin:</p>
+<pre><code>import { validateManifest } from &quot;@bunker-community/plugin-sdk&quot;;
+const r = validateManifest(JSON.parse(text)); // { ok: true, manifest } | { ok: false, errors: string[] }</code></pre>
+<hr>
+<h2 id="izinler">İzinler</h2>
+<p>Plugin sadece manifest'te yazdığı izinlerin gerektirdiği şeyleri yapabilir; izinsiz çağrı hata fırlatır. Sunucu sahibi plugin'i eklerken bu listeyi onaylar. Plugin güncellenip <strong>yeni izin isterse</strong>, o sunucuda yeniden onaylanana kadar çalışmaz. Gereksiz izin isteme.</p>
+<div class="tw"><table><thead><tr><th>İzin</th><th>Sunucu sahibine gösterilen</th><th>Açtığı şey</th></tr></thead><tbody><tr><td><code>events.messages</code></td><td>Metin kanallarındaki mesajları okur, komutlara cevap verir</td><td><code>message.*</code> olayları, <code>ctx.command</code></td></tr><tr><td><code>events.voice</code></td><td>Ses kanallarına kimin girip çıktığını görür</td><td><code>voice.*</code> olayları</td></tr><tr><td><code>events.members</code></td><td>Sunucuya katılan ve ayrılan üyeleri görür</td><td><code>member.*</code>, <code>guild.create/delete</code></td></tr><tr><td><code>events.channels</code></td><td>Kanalların açılmasını, değişmesini ve silinmesini görür</td><td><code>channel.*</code></td></tr><tr><td><code>events.presence</code></td><td>Üyelerin çevrimiçi olup olmadığını görür</td><td><code>user.online/offline</code></td></tr><tr><td><code>chat.send</code></td><td>Metin kanallarına kendi adıyla mesaj yazar</td><td><code>ctx.chat.send</code>, <code>CommandCall.reply</code></td></tr><tr><td><code>storage</code></td><td>Kendi verilerini Bunker'da saklar</td><td><code>ctx.storage</code></td></tr><tr><td><code>voice.speak</code></td><td>Ses kanallarına katılır ve ses çalar</td><td><code>ctx.voice</code></td></tr></tbody></table></div>
+<p><code>ctx.ui</code> (pencere) ve <code>ctx.log</code> izin gerektirmez.</p>
+<p><strong>Kapsam:</strong> plugin sadece <strong>ekli olduğu sunucuların</strong> olaylarını duyar ve sadece oralara yazar / oradaki ses kanallarına girer. Özel mesajlar (DM) plugin'lere hiç gönderilmez.</p>
+<hr>
+<h2 id="yaşam-döngüsü">Yaşam döngüsü</h2>
+<pre><code>export default definePlugin({
+  async setup(ctx) {
+    // Plugin açılınca bir kez. Dinleyicileri burada kur.
+    ctx.onUnload(async () =&gt; {
+      // Kapanırken: zamanlayıcıları durdur, gerekiyorsa durumu depoya yaz.
+    });
+  },
+});</code></pre>
+<ul><li><code>setup</code> hata fırlatırsa plugin <code>error</code> durumuna geçer.</li><li>Plugin kapatılınca (yönetim paneli, sunucu yeniden başlarken, hata bütçesi aşılınca): bütün dinleyiciler bırakılır, ses oturumları kapanır, <code>onUnload</code> fonksiyonları çalışır. <code>onUnload</code> içinde depo hâlâ kullanılabilir. Sunucu kapanırken plugin'lere toplam <strong>en fazla 3 sn</strong> tanınır.</li><li>Kapandıktan sonra eski <code>ctx</code> ile yapılan her çağrı <code>&quot;plugin kapalı&quot;</code> hatası verir; <code>setTimeout</code> vb. kendin açtığın şeyleri <code>onUnload</code>'da temizle.</li><li>Plugin kodu değişince sunucunun yeniden başlatılması gerekir (modül önbelleği).</li><li><strong>Hata bütçesi:</strong> dinleyicilerinden 60 sn içinde 10 hata çıkarsa plugin kendiliğinden kapanır.</li></ul>
+<hr>
+<h2 id="plugincontext-ctx"><code>PluginContext</code> (ctx)</h2>
+<div class="tw"><table><thead><tr><th>Üye</th><th>Açıklama</th></tr></thead><tbody><tr><td><code>ctx.manifest</code></td><td>Doğrulanmış manifest (salt okunur).</td></tr><tr><td><code>ctx.log.info/warn/error(msg, ctx?)</code></td><td>Bunker kayıtlarına <code>plugin</code> etiketiyle yazar.</td></tr><tr><td><code>ctx.on(olay, fn)</code></td><td>Olay dinle; dönen fonksiyon dinlemeyi bırakır.</td></tr><tr><td><code>ctx.command(ad, fn)</code></td><td><code>!ad</code> komutu.</td></tr><tr><td><code>ctx.chat.send(kanal, metin)</code></td><td>Metin kanalına mesaj.</td></tr><tr><td><code>ctx.storage</code></td><td>Kalıcı anahtar-değer deposu.</td></tr><tr><td><code>ctx.voice.join(cid)</code> / <code>ctx.voice.session(cid)</code></td><td>Ses kanalı oturumu.</td></tr><tr><td><code>ctx.ui.setState(where, state, opts?)</code> / <code>ctx.ui.onAction(fn)</code></td><td>Panel penceresi.</td></tr><tr><td><code>ctx.onUnload(fn)</code></td><td>Kapanışta çalışacak temizlik.</td></tr></tbody></table></div>
+<p>Bütün olay verileri çekirdekten <strong>kopyadır</strong>; değiştirmen Bunker'ı etkilemez.</p>
+<hr>
+<h2 id="olaylar">Olaylar</h2>
+<pre><code>ctx.on(&quot;member.join&quot;, (e) =&gt; ctx.log.info(&quot;yeni üye&quot;, { gid: e.gid, uid: e.uid }));</code></pre>
+<div class="tw"><table><thead><tr><th>Olay</th><th>Veri</th><th>İzin</th></tr></thead><tbody><tr><td><code>message.create</code></td><td><code>{ scope: &quot;text&quot;, gid, chan, m: PluginMessage }</code></td><td><code>events.messages</code></td></tr><tr><td><code>message.edit</code></td><td><code>{ scope, gid, chan, m }</code></td><td><code>events.messages</code></td></tr><tr><td><code>message.delete</code></td><td><code>{ scope, gid, chan, id, by }</code></td><td><code>events.messages</code></td></tr><tr><td><code>message.react</code></td><td><code>{ scope, gid, chan, id, uid, emoji, added }</code></td><td><code>events.messages</code></td></tr><tr><td><code>voice.join</code></td><td><code>{ gid, cid, uid, bot }</code></td><td><code>events.voice</code></td></tr><tr><td><code>voice.move</code></td><td><code>{ gid, cid, uid, bot, from }</code></td><td><code>events.voice</code></td></tr><tr><td><code>voice.leave</code></td><td><code>{ gid, cid, uid, bot }</code></td><td><code>events.voice</code></td></tr><tr><td><code>member.join</code> / <code>member.leave</code></td><td><code>{ gid, uid }</code></td><td><code>events.members</code></td></tr><tr><td><code>guild.create</code></td><td><code>{ gid, owner }</code></td><td><code>events.members</code></td></tr><tr><td><code>guild.delete</code></td><td><code>{ gid }</code></td><td><code>events.members</code></td></tr><tr><td><code>channel.create/update/delete</code></td><td><code>{ gid, kind: &quot;text&quot; | &quot;voice&quot;, id }</code></td><td><code>events.channels</code></td></tr><tr><td><code>user.online</code> / <code>user.offline</code></td><td><code>{ uid }</code> (sadece ekli olduğun bir sunucunun üyesiyse)</td><td><code>events.presence</code></td></tr><tr><td><code>guild.install</code></td><td><code>{ gid, by }</code>: plugin bu sunucuya eklendi</td><td>—</td></tr><tr><td><code>guild.uninstall</code></td><td><code>{ gid }</code>: çıkarıldı ya da sunucu silindi; <strong>o sunucunun verisini burada sil</strong></td><td>—</td></tr></tbody></table></div>
+<pre><code>interface PluginMessage {
+  id: string; ts: number; uid: string; nick: string;
+  text: string;          // ham metin: bahsetme &lt;@uid&gt;, özel emoji &lt;:ad:id&gt; biçiminde
+  system: boolean;       // &quot;... sabitledi&quot; gibi sistem satırı
+  bot: boolean;          // bot ya da plugin yazdı (kendi mesajların dahil: döngüye girme!)
+  attachments: number;   // görsel/video sayısı
+  replyTo?: string; edited?: number;
+}</code></pre>
+<p>Olaylar çekirdek işini bitirdikten sonra (ertelenerek) gelir: dinleyicin yavaş olsa da Bunker beklemez, cevabın kullanıcının mesajından sonra görünür.</p>
+<hr>
+<h2 id="komutlar">Komutlar</h2>
+<pre><code>ctx.command(&quot;zar&quot;, async (c) =&gt; {
+  const yüz = Number(c.args) || 6;
+  await c.reply(`${c.nick} attı: ${1 + Math.floor(Math.random() * yüz)}`);
+});</code></pre>
+<ul><li>İzin: <code>events.messages</code> (cevap için ayrıca <code>chat.send</code>).</li><li>Ad: harf, rakam, <code>_</code>, <code>-</code>; 1-32 karakter; küçük harfe çevrilir; <code>!</code> yazılmaz.</li><li>Sadece metin kanallarında, <strong>insan</strong> yazınca tetiklenir (botlar komut çalıştıramaz).</li><li>Bunker'ın kendi komutları (<code>!play</code>, <code>!skip</code>, <code>!rank</code>, <code>!bug</code> …) ve başka bir plugin'in aldığı ad alınamaz (<code>setup</code> hata verir).</li></ul>
+<pre><code>interface CommandCall {
+  gid: string; chan: string; uid: string; nick: string;
+  args: string;                 // komuttan sonraki metin
+  m: PluginMessage;
+  reply(text: string): Promise&lt;void&gt;; // aynı kanala
+}</code></pre>
+<hr>
+<h2 id="mesaj-gönderme">Mesaj gönderme</h2>
+<pre><code>const r = await ctx.chat.send(chanId, &quot;Merhaba!&quot;); // { id } | null</code></pre>
+<ul><li>İzin <code>chat.send</code>. Sadece ekli olduğun sunucunun metin kanallarına.</li><li>Plugin'in adıyla (sunucuda verilmiş özel adla) ve BOT işaretiyle görünür.</li><li>10 sn'de en fazla 10 mesaj; fazlası hata.</li><li>Metinde bahsetme <code>&lt;@uid&gt;</code> biçiminde yazılır.</li></ul>
+<hr>
+<h2 id="depo">Depo</h2>
+<pre><code>await ctx.storage.set(&quot;ayar:&quot; + gid, { dil: &quot;tr&quot; });
+const a = await ctx.storage.get&lt;{ dil: string }&gt;(&quot;ayar:&quot; + gid); // yoksa undefined
+await ctx.storage.delete(&quot;ayar:&quot; + gid);
+const anahtarlar = await ctx.storage.keys(&quot;ayar:&quot;);</code></pre>
+<ul><li>İzin <code>storage</code>. Plugin'e özel (başka plugin göremez), Bunker'ın veritabanında, yeniden başlatmada kalır.</li><li>Değer JSON'a çevrilebilir olmalı, ≤64 KB. Anahtar 1-200 karakter; plugin başına ≤10 000 anahtar.</li><li>Veri <strong>bütün sunucular için ortak</strong> tek depoda: sunucuya ait veriyi <code>gid</code> önekiyle tut, <code>guild.uninstall</code>'da sil.</li></ul>
+<hr>
+<h2 id="ses">Ses</h2>
+<p>İzin <code>voice.speak</code>. Her ses kanalında ayrı bir oturum (bot kanalda ayrı üye olarak görünür).</p>
+<pre><code>const s = await ctx.voice.join(cid);   // zaten oradaysa aynı oturum
+s.setVolume(30);
+s.on(&quot;started&quot;, () =&gt; ctx.log.info(&quot;çalıyor&quot;));
+s.on(&quot;ended&quot;, () =&gt; ctx.log.info(&quot;bitti&quot;));
+s.on(&quot;error&quot;, (why, { silent }) =&gt; { if (!silent) ctx.log.warn(why); });
+s.on(&quot;leave&quot;, (why) =&gt; ctx.log.info(&quot;ayrıldı: &quot; + why));
+await s.playMedia(&quot;daft punk one more time&quot;);</code></pre>
+<p><code>ctx.voice.session(cid)</code> açık oturumu verir (yoksa <code>null</code>).</p>
+<h3 id="voicesession"><code>VoiceSession</code></h3>
+<div class="tw"><table><thead><tr><th>Üye</th><th>Açıklama</th></tr></thead><tbody><tr><td><code>gid</code>, <code>cid</code></td><td>Sunucu ve kanal.</td></tr><tr><td><code>playing</code>, <code>paused</code>, <code>volume</code> (0-100), <code>connected</code></td><td>Durum (salt okunur).</td></tr><tr><td><code>playMedia(sorgu, { seek? })</code></td><td>YouTube / SoundCloud bağlantısı, radyo yayını ya da arama metni (YouTube'da aranır, engellenirse SoundCloud). Şarkı bilgisi <code>meta</code> olayıyla gelir.</td></tr><tr><td><code>prefetch(sorgu)</code></td><td>Sıradakini önceden çöz (geçiş hızlansın; 30 dk geçerli).</td></tr><tr><td><code>playUrl(url, { seek? })</code></td><td>Doğrudan http(s) ses adresi (radyo, mp3…). İç ağ adresleri reddedilir.</td></tr><tr><td><code>playPcm(akış)</code></td><td>Kendi ürettiğin ses: 48 kHz, stereo, 16 bit little-endian ham PCM, <code>AsyncIterable&lt;Uint8Array&gt;</code>. Sadece Bunker içindeki plugin'ler.</td></tr><tr><td><code>stop()</code>, <code>pause()</code>, <code>resume()</code></td><td>Yeni bir <code>play*</code> çalanı durdurur.</td></tr><tr><td><code>setVolume(v)</code></td><td>0-100.</td></tr><tr><td><code>leave()</code></td><td>Kanaldan çık.</td></tr><tr><td><code>on(olay, fn)</code> → bırakma fonksiyonu</td><td><code>started</code> (ilk ses gitti), <code>ended</code> (akış bitti), <code>error(why, { silent })</code> (çalınamadı; <code>silent</code> = YouTube engeli gibi, kullanıcıya göstermek şart değil), <code>meta(MediaMeta)</code>, <code>leave(why)</code>.</td></tr></tbody></table></div>
+<pre><code>interface MediaMeta { title: string; artist: string; duration: number /* sn, canlıda 0 */; thumb: string; src: string; url: string }</code></pre>
+<ul><li>Kanalda insan kalmazsa 60 sn sonra, kanal silinince hemen, plugin sunucudan çıkarılınca / kapanınca oturum kapanır (<code>leave</code> olayı).</li><li>Bunker genelinde aynı anda en fazla 12 plugin ses oturumu.</li></ul>
+<hr>
+<h2 id="pencere-panel-arayüzü">Pencere (panel arayüzü)</h2>
+<p>Plugin, panelin sol altındaki plugin grubunda bir ikon ve tıklayınca açılan bir pencere gösterebilir.</p>
+<pre><code>&quot;ui&quot;: { &quot;title&quot;: &quot;Müzik&quot;, &quot;icon&quot;: &quot;music&quot;, &quot;page&quot;: &quot;ui/index.html&quot;, &quot;scope&quot;: &quot;voice&quot; }</code></pre>
+<div class="tw"><table><thead><tr><th>Alan</th><th>Açıklama</th></tr></thead><tbody><tr><td><code>title</code></td><td>Pencere başlığı (≤40).</td></tr><tr><td><code>icon</code></td><td>Panel ikon adı (aşağıda); yoksa <code>plug</code>.</td></tr><tr><td><code>page</code></td><td>Plugin klasöründe <code>.html</code> dosyası.</td></tr><tr><td><code>scope</code></td><td><code>&quot;voice&quot;</code>: sadece o sunucunun bir ses kanalındayken görünür, durum <strong>kanal başına</strong>. <code>&quot;guild&quot;</code>: sunucuda her zaman, durum sunucu başına.</td></tr></tbody></table></div>
+<p>Kullanılabilir ikonlar: <code>dots copy ticket hash pin volume mic micOff headphones headphonesOff gear users lock plus chevron x menu send clip moon sun plug radio store arrowIn arrowOut volumeX ban hand edit trash user info mute rec screen camera moveTo logout shield compass userPlus check search door music shuffle skip play pause list smile smilePlus reply message maximize gamepad monitor tv download sleep clock crown live phone phoneOff video bell at keyboard palette key</code>.</p>
+<h3 id="model-durum-aşağı-işlem-yukarı">Model: durum aşağı, işlem yukarı</h3>
+<pre><code>plugin (sunucu)  ── ctx.ui.setState ──▶  panel  ── postMessage {bunker:&quot;state&quot;} ──▶  sayfa (iframe)
+plugin (sunucu)  ◀── ctx.ui.onAction ──  panel  ◀── postMessage {bunker:&quot;action&quot;} ──  sayfa</code></pre>
+<p>Sayfa kendi başına hiçbir yere bağlanamaz; bütün iş plugin'de, sayfa sadece durumu çizer ve tıklamaları iletir.</p>
+<p><strong>Sunucu tarafı</strong></p>
+<pre><code>ctx.ui.onAction(async (a) =&gt; {
+  // a: { gid, cid?, uid, nick, name, data }
+  if (a.name === &quot;sayac.arttir&quot;) {
+    const n = ((await ctx.storage.get&lt;number&gt;(&quot;n:&quot; + a.gid)) ?? 0) + 1;
+    await ctx.storage.set(&quot;n:&quot; + a.gid, n);
+    ctx.ui.setState({ gid: a.gid }, { n, son: a.nick });
+  }
+});</code></pre>
+<ul><li><code>setState({ gid, cid? }, state, { live? })</code>: o sunucudaki (scope <code>voice</code> ise o kanaldaki) herkese anında gider; bağlanan kullanıcılar da son durumu alır. JSON, ≤32 KB. <code>live: true</code> → sol alttaki ikon yanar (ör. çalarken). <code>null</code> → temizle. Durum bellekte tutulur, yeniden başlatmada silinir (gerekirse depoya yaz).</li><li><code>onAction</code>: Bunker önce kontrol eder: kişi sunucunun üyesi mi, scope <code>voice</code> ise o kanalda mı. Kişi başı saniyede ≤10 işlem, <code>data</code> ≤4 KB. Yine de <code>data</code>'yı <strong>güvenilmez girdi</strong> say ve doğrula.</li><li>Sayfa ilk açıldığında durum yoksa <code>state: null</code> gelir; bir <code>&quot;hello&quot;</code> işlemi gönderip durumu yayınlamak iyi bir alışkanlık.</li></ul>
+<p><strong>Sayfa tarafı (<code>ui/index.html</code>)</strong></p>
+<pre><code>&lt;!doctype html&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;style&gt;
+  :root { --bg:#1e1f22; --text:#dbdee1; --accent:#6c6cff; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font:14px system-ui; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 12px; }
+&lt;/style&gt;
+&lt;p id=&quot;t&quot;&gt;…&lt;/p&gt;
+&lt;button id=&quot;b&quot;&gt;Arttır&lt;/button&gt;
+&lt;script&gt;
+  const act = (name, data) =&gt; parent.postMessage({ bunker: &quot;action&quot;, name, data }, &quot;*&quot;);
+  addEventListener(&quot;message&quot;, (e) =&gt; {
+    const m = e.data;
+    if (e.source !== parent || m?.bunker !== &quot;state&quot;) return;
+    for (const [k, v] of Object.entries(m.ctx.theme)) if (typeof v === &quot;string&quot;) document.documentElement.style.setProperty(&quot;--&quot; + k, v);
+    if (!m.state) return act(&quot;hello&quot;);
+    document.getElementById(&quot;t&quot;).textContent = `Sayaç: ${m.state.n} (son: ${m.state.son})`;
+  });
+  document.getElementById(&quot;b&quot;).onclick = () =&gt; act(&quot;sayac.arttir&quot;);
+  parent.postMessage({ bunker: &quot;ready&quot; }, &quot;*&quot;);
+&lt;/script&gt;</code></pre>
+<p>Mesajlar:</p>
+<div class="tw"><table><thead><tr><th>Yön</th><th>Mesaj</th></tr></thead><tbody><tr><td>sayfa → panel</td><td><code>{ bunker: &quot;ready&quot; }</code> (hazırım, durumu yolla) · <code>{ bunker: &quot;action&quot;, name, data? }</code> · <code>{ bunker: &quot;close&quot; }</code> (pencereyi kapat)</td></tr><tr><td>panel → sayfa</td><td><code>{ bunker: &quot;state&quot;, state, ctx: { gid, cid, me: { uid, nick }, theme: { dark, bg, text, muted, accent, border, hover } } }</code></td></tr></tbody></table></div>
+<p>Sayfanın kuralları:</p>
+<ul><li><code>&lt;iframe sandbox=&quot;allow-scripts&quot;&gt;</code> içinde, ayrı kökende açılır: panelin çerezlerine, verisine, DOM'una erişemez.</li><li>CSP: ağ isteği yok (<code>fetch</code>, WebSocket, form yok); script ve stil satır içi ya da plugin klasöründen, yazı tipi <code>data:</code> ya da klasörden. Görseller <code>https:</code>, <code>data:</code> ya da klasörden yüklenebilir (ör. kapak resmi). <strong>Tek dosya</strong> önerilir (uzak plugin'de zorunlu).</li><li>Sayfa sadece <code>ui.page</code>'in bulunduğu klasörden sunulur (<code>/plugin-ui/&lt;id&gt;/…</code>).</li><li>Panelin çevirisi (İngilizce) sayfaya uygulanmaz; <code>ctx</code> içinde dil yok, şimdilik metinleri sen seç.</li><li>Tema renklerini <code>ctx.theme</code>'den al ki açık/koyu temada uyumlu görünsün.</li></ul>
+<hr>
+<h2 id="bunkerda-çalıştırma-barındırma">Bunker'da çalıştırma (barındırma)</h2>
+<p>Kodunu sürekli açık bir makinede tutamıyorsan Bunker çalıştırabilir. Kod aynıdır; sadece tek dosyaya paketlenir ve Bunker ekibi inceler.</p>
+<ol><li>Kodunu <strong>tek bir ESM dosyasına</strong> paketle. <code>@bunker-community/plugin-sdk</code> dışında hiçbir import kalmamalı:</li></ol>
+<pre><code>npx esbuild index.js --bundle --format=esm --platform=neutral --external:@bunker-community/plugin-sdk --outfile=bundle.mjs</code></pre>
+<p>Dosya <code>export default definePlugin({ … })</code> içermeli ve <code>connect()</code> <strong>çağırmamalı</strong> (bağlantıyı Bunker kurar). Aynı kodu hem kendi bilgisayarında hem Bunker'da çalıştırmak istersen <code>connect</code>'i ayrı bir dosyaya koy:</p>
+<pre><code>// plugin.js: Bunker'a yüklenen kısım
+import { definePlugin } from &quot;@bunker-community/plugin-sdk&quot;;
+export default definePlugin({ setup(ctx) { /* … */ } });
+
+// local.js: sadece kendi bilgisayarında
+import { connect } from &quot;@bunker-community/plugin-sdk&quot;;
+import plugin from &quot;./plugin.js&quot;;
+connect(plugin, { token: process.env.BUNKER_TOKEN });</code></pre>
+<ol start="2"><li><strong>Ayarlar → Geliştirici</strong> → plugin'in satırında <strong>Kod yükle</strong>: <code>bundle.mjs</code> + <code>bunker-plugin.json</code> (+ pencere varsa <code>.html</code> sayfası) dosyalarını birlikte seç. En fazla 1 MB.</li><li>Site yöneticisi kodu inceler: <strong>Onaylandı</strong> ya da <strong>Reddedildi</strong> (sebebiyle) görürsün.</li><li>Onaylanınca <strong>Bunker'da çalıştır</strong>'a bas. Satırda &quot;Bunker'da çalışıyor&quot; yazar. Kendi bilgisayarından aynı anahtarla bağlanmak artık reddedilir (kod 4004); <strong>Durdur</strong> deyince yine kendi bilgisayarından bağlanabilirsin.</li><li>Yeni kod yüklersen, onaylanana kadar <strong>eski onaylı sürüm çalışmaya devam eder</strong>.</li></ol>
+<p>Barındırılan kodun kuralları (kısıtlı süreç):</p>
+<div class="tw"><table><tbody><tr><td>Ağ</td><td>Yok: <code>fetch</code>, <code>WebSocket</code>, <code>http</code>, <code>net</code>, <code>dns</code>… kapalı. Dışarıyla tek bağlantı Bunker API'si.</td></tr><tr><td>Dosya</td><td>Sadece kendi dosyası okunur; yazma yok. <code>fs</code>, <code>os</code>, <code>child_process</code>, <code>worker_threads</code>, <code>vm</code> kapalı.</td></tr><tr><td>Ortam</td><td>Ortam değişkenleri boş; Bunker'ın anahtarları, veritabanı ve dosyaları görünmez.</td></tr><tr><td>Bellek</td><td>128 MB (aşarsa süreç kapanır ve yeniden açılır).</td></tr><tr><td>İşlemci</td><td>1 dk ortalaması %60'ı geçerse kapanır; 20 sn cevap vermezse (sonsuz döngü) kapanır.</td></tr><tr><td>Çökme</td><td>Yeniden açılır (2 sn → 60 sn bekleyerek); 10 dk'da 5 kez çökerse durur, satırda sebebi görünür.</td></tr><tr><td>Kayıt</td><td><code>console.log</code> / <code>console.error</code> Bunker kayıtlarına düşer (dakikada en fazla 60 satır).</td></tr><tr><td>Depo</td><td>Aynı depo: kendi bilgisayarındayken yazdıkların barındırılınca da durur.</td></tr></tbody></table></div>
+<p>Ağ gerektiren bir plugin (dış API çağıran hava durumu botu gibi) barındırılamaz; onu kendi makinende çalıştır.</p>
+<hr>
+<h2 id="sınırlar">Sınırlar</h2>
+<div class="tw"><table><thead><tr><th>Şey</th><th>Sınır</th></tr></thead><tbody><tr><td>Sunucu başına plugin</td><td>25</td></tr><tr><td>Hata bütçesi</td><td>60 sn'de 10 hata → plugin kapanır</td></tr><tr><td><code>chat.send</code></td><td>10 sn'de 10 mesaj</td></tr><tr><td>Depo değeri / anahtar sayısı / anahtar uzunluğu</td><td>64 KB / 10 000 / 200</td></tr><tr><td>Pencere durumu</td><td>32 KB</td></tr><tr><td>Pencere işlemi</td><td>kişi başı sn'de 10, <code>data</code> ≤4 KB</td></tr><tr><td>Ses oturumu (Bunker geneli)</td><td>12</td></tr><tr><td>Komut adı</td><td>1-32 karakter</td></tr><tr><td>Uzak plugin (kişi başı)</td><td>5</td></tr><tr><td>Geçit</td><td>mesaj ≤320 KB, saniyede ~30 çağrı</td></tr><tr><td>Barındırılan kod</td><td>tek dosya ≤1 MB, 128 MB bellek, %60 işlemci; Bunker genelinde 20 süreç</td></tr></tbody></table></div>
+<hr>
+<h2 id="sürümler-ve-uyumluluk">Sürümler ve uyumluluk</h2>
+<ul><li>SDK sürümü <code>SDK_VERSION</code> (şu an <code>0.1.4</code>). Manifest'teki <code>sdk</code> alanı:<ul><li><code>0.x</code> döneminde ara sürüm de kırıcı sayılır: <code>&quot;0.1&quot;</code> → 0.1.x ile çalışır, 0.2 ile çalışmaz.</li><li><code>1.0</code> sonrası: <code>&quot;1&quot;</code> ya da <code>&quot;1.2&quot;</code> → aynı ana sürümde, en az o ara sürüm.</li></ul></li><li>Kural: alanlar <strong>eklenir</strong>, silinmez / yeniden adlandırılmaz. Kırıcı değişiklik ana sürümü artırır.</li><li>Değişiklikler: 0.1.0 olaylar, komutlar, depo, mesaj · 0.1.1 <code>guild.install/uninstall</code> · 0.1.2 ses (<code>voice.speak</code>, <code>playPcm/playUrl</code>) + pencere (<code>ui</code>) · 0.1.3 <code>playMedia</code>, <code>prefetch</code>, <code>meta</code>, <code>error.silent</code> · 0.1.4 uzak plugin (<code>connect</code>), barındırma.</li></ul>
+<hr>
+<h2 id="yayınlama-ve-sunucuya-ekleme">Yayınlama ve sunucuya ekleme</h2>
+<p><strong>Uzak plugin:</strong></p>
+<ol><li>Ayarlar → Geliştirici'de oluştur (kişi başı en fazla 5), kodunu çalıştır.</li><li>Doğrulanmamışken sadece <strong>senin</strong> sunucu ayarları yetkin olan sunuculara eklenebilir. Store'da sadece sana görünür (&quot;Doğrulanmamış&quot; etiketiyle).</li><li>Herkese açmak için Bunker ekibine haber ver: site yöneticisi inceleyip yönetim panelinden &quot;Sunucu sahipleri ekleyebilsin&quot; derse Store'da herkese görünür (doğrulandı).</li><li>Site yöneticisi kötüye kullanılan plugin'i kapatabilir; o zaman bağlantı kapanır (kod 4003).</li><li>&quot;Sil&quot;: plugin bütün sunuculardan çıkar, deposu silinir.</li></ol>
+<p><strong>Bunker içinde (birinci taraf):</strong></p>
+<ol><li>Plugin <code>plugins/&lt;id&gt;/</code> olarak repoya eklenir, incelenir, deploy edilir, Bunker yeniden başlatılır.</li><li><strong>Site yöneticisi</strong> (Yönetim paneli → Sistem → Plugin'ler): plugin'i açar (yüklensin) ve isterse &quot;Sunucu sahipleri ekleyebilsin&quot; der (Store'da listelenir). Yeni plugin kapalı ve listesiz gelir.</li><li><strong>Sunucu sahibi / <code>server.manage</code> yetkisi olan:</strong> Plugin Store'dan ya da Sunucu ayarları → Plugin'ler'den ekler, izinleri onaylar. Bot üye listesinde &quot;Botlar&quot; grubunda görünür, adı sunucuya özel değiştirilebilir.</li><li>Kayıtlar: Yönetim paneli → Kayıtlar, etiket <code>plugin</code>.</li></ol>
+<p>Test ipuçları (yerel): <code>PLUGINS_DIR</code> ile başka plugin klasörü, <code>PLUGIN_VOICE_WORKER</code> ile sahte ses süreci, <code>PLUGIN_MEDIA_FAKE=&lt;sn&gt;</code> ile sahte medya (yt-dlp ve LiveKit gerekmez).</p>
+<hr>
+<h2 id="geçit-protokolü-sdksız-bağlanmak">Geçit protokolü (SDK'sız bağlanmak)</h2>
+<p>SDK Node.js içindir. Başka bir dilde yazmak istersen geçide doğrudan bağlanabilirsin: JSON metin mesajları, WebSocket <code>wss://bunker.community/app/api/plugin/gateway</code>. Mesaj ≤320 KB, saniyede ~30 çağrı (anlık 60).</p>
+<p><strong>1. Tanıtma</strong> (ilk mesaj, 10 sn içinde):</p>
+<pre><code>{ &quot;op&quot;: &quot;hello&quot;, &quot;token&quot;: &quot;ext-…&quot;, &quot;sdk&quot;: &quot;0.1.4&quot;, &quot;manifest&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;uiPage&quot;: &quot;&lt;!doctype html&gt;…&quot; }</code></pre>
+<p><code>manifest</code> ve <code>uiPage</code> isteğe bağlı. Cevap:</p>
+<pre><code>{ &quot;op&quot;: &quot;ready&quot;, &quot;v&quot;: 1, &quot;sdk&quot;: &quot;0.1.4&quot;, &quot;manifest&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;guilds&quot;: [{ &quot;gid&quot;: &quot;…&quot;, &quot;name&quot;: &quot;…&quot; }] }</code></pre>
+<p><strong>2. Çağrı → sonuç:</strong></p>
+<pre><code>{ &quot;op&quot;: &quot;call&quot;, &quot;id&quot;: 7, &quot;method&quot;: &quot;chat.send&quot;, &quot;args&quot;: [&quot;&lt;kanal&gt;&quot;, &quot;merhaba&quot;] }
+{ &quot;op&quot;: &quot;result&quot;, &quot;id&quot;: 7, &quot;ok&quot;: true, &quot;value&quot;: { &quot;id&quot;: &quot;&lt;mesaj&gt;&quot; } }
+{ &quot;op&quot;: &quot;result&quot;, &quot;id&quot;: 7, &quot;ok&quot;: false, &quot;error&quot;: &quot;Bu kanala yazamazsın (plugin bu sunucuya ekli değil).&quot; }</code></pre>
+<div class="tw"><table><thead><tr><th>method</th><th>args</th><th>value</th></tr></thead><tbody><tr><td><code>subscribe</code> / <code>unsubscribe</code></td><td><code>[olay]</code> (olay adları + <code>&quot;ui.action&quot;</code>)</td><td>—</td></tr><tr><td><code>command</code> / <code>uncommand</code></td><td><code>[ad]</code></td><td>—</td></tr><tr><td><code>chat.send</code></td><td><code>[kanal, metin]</code></td><td><code>{ id }</code> ya da <code>null</code></td></tr><tr><td><code>storage.get</code></td><td><code>[anahtar]</code></td><td>değer ya da <code>null</code></td></tr><tr><td><code>storage.set</code></td><td><code>[anahtar, değer]</code></td><td>—</td></tr><tr><td><code>storage.delete</code></td><td><code>[anahtar]</code></td><td>—</td></tr><tr><td><code>storage.keys</code></td><td><code>[önek]</code></td><td><code>string[]</code></td></tr><tr><td><code>ui.setState</code></td><td><code>[{ gid, cid? }, durum, { live? }]</code></td><td>—</td></tr><tr><td><code>voice.join</code> / <code>voice.session</code></td><td><code>[cid]</code></td><td>oturum durumu (session: yoksa <code>null</code>)</td></tr><tr><td><code>voice.call</code></td><td><code>[cid, işlem, argümanlar[]]</code>; işlem: <code>playUrl playMedia prefetch stop pause resume setVolume leave</code></td><td>oturum durumu</td></tr><tr><td><code>log</code></td><td><code>[&quot;info&quot; / &quot;warn&quot; / &quot;error&quot;, mesaj, ek?]</code></td><td>—</td></tr><tr><td><code>guilds</code></td><td><code>[]</code></td><td><code>[{ gid, name }]</code></td></tr><tr><td><code>ping</code></td><td><code>[]</code></td><td><code>&quot;pong&quot;</code></td></tr></tbody></table></div>
+<p>Oturum durumu: <code>{ gid, cid, playing, paused, volume, connected }</code>.</p>
+<p><strong>3. Sunucudan gelenler:</strong></p>
+<pre><code>{ &quot;op&quot;: &quot;event&quot;, &quot;name&quot;: &quot;member.join&quot;, &quot;data&quot;: { &quot;gid&quot;: &quot;…&quot;, &quot;uid&quot;: &quot;…&quot; } }
+{ &quot;op&quot;: &quot;event&quot;, &quot;name&quot;: &quot;ui.action&quot;, &quot;data&quot;: { &quot;gid&quot;: &quot;…&quot;, &quot;cid&quot;: &quot;…&quot;, &quot;uid&quot;: &quot;…&quot;, &quot;nick&quot;: &quot;…&quot;, &quot;name&quot;: &quot;…&quot;, &quot;data&quot;: null } }
+{ &quot;op&quot;: &quot;command&quot;, &quot;name&quot;: &quot;zar&quot;, &quot;call&quot;: { &quot;gid&quot;: &quot;…&quot;, &quot;chan&quot;: &quot;…&quot;, &quot;uid&quot;: &quot;…&quot;, &quot;nick&quot;: &quot;…&quot;, &quot;args&quot;: &quot;20&quot;, &quot;m&quot;: { &quot;…&quot;: &quot;…&quot; } } }
+{ &quot;op&quot;: &quot;voice&quot;, &quot;cid&quot;: &quot;…&quot;, &quot;ev&quot;: &quot;started&quot;, &quot;args&quot;: [], &quot;state&quot;: { &quot;…&quot;: &quot;…&quot; } }</code></pre>
+<p><code>voice.ev</code>: <code>started</code>, <code>ended</code>, <code>error</code>, <code>meta</code>, <code>leave</code>. Komuta cevap vermek için <code>chat.send</code> ile <code>call.chan</code>'a yaz.</p>
+<p><strong>Kapanış kodları:</strong> 4001 anahtar geçersiz / yenilendi · 4002 bozuk mesaj · 4003 plugin kapalı ya da silindi · 4004 aynı anahtarla yeni bağlantı açıldı (ya da plugin Bunker'da barındırılıyor) · 4005 manifest geçersiz (sebep <code>reason</code>'da) · 4008 çok hızlı ya da mesajları okumuyor. Diğer kopmalarda yeniden bağlan. Bağlantı koptuğunda abonelikler ve komutlar silinir; yeniden bağlanınca tekrar gönder.</p>
+<hr>
+<h2 id="örnekler">Örnekler</h2>
+<ul><li><code>plugins/hello</code>: komut, olay, depo, mesaj.</li><li><code>plugins/radio</code>: ses (<code>playUrl</code>) + pencere.</li><li><code>plugins/music</code>: kanal başına sıra, <code>playMedia</code> + <code>prefetch</code>, pencere, yeniden başlatmada kaldığı yerden devam (<code>onUnload</code> + depo).</li></ul>
+</main>
+</body>
+</html>

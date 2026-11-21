@@ -1,0 +1,10 @@
+{
+  "name": "@bunker/plugin-hello",
+  "version": "0.1.0",
+  "description": "Örnek plugin: !merhaba",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@bunker-community/plugin-sdk": "*"
+  }
+}

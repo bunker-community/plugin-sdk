@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radyo</title>
+<style>
+  :root { --bg: #1e1f22; --text: #dbdee1; --muted: #949ba4; --accent: #6c6cff; --border: rgba(255,255,255,.08); --hover: rgba(255,255,255,.06); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { padding: 14px 16px 16px; }
+  .now { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .disc { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--hover); color: var(--muted); }
+  .disc.on { background: var(--accent); color: #fff; }
+  .disc svg { width: 22px; height: 22px; }
+  .meta { min-width: 0; flex: 1; }
+  .meta b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta span { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta .err { color: #f0b232; white-space: normal; }
+  .btns { display: flex; gap: 6px; }
+  button { font: inherit; color: var(--text); background: var(--hover); border: 0; border-radius: 6px; height: 32px; padding: 0 12px; cursor: pointer; }
+  button:hover { filter: brightness(1.25); }
+  button.primary { background: var(--accent); color: #fff; }
+  button.icon { width: 32px; padding: 0; display: grid; place-items: center; }
+  button svg { width: 16px; height: 16px; }
+  .vol { display: flex; align-items: center; gap: 10px; padding: 12px 0 2px; color: var(--muted); font-size: 12px; }
+  .vol input { flex: 1; accent-color: var(--accent); }
+  [hidden] { display: none !important; }
+  form { display: flex; gap: 8px; margin: 14px 0 6px; }
+  input[type=url] { flex: 1; min-width: 0; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); padding: 0 10px; font: inherit; }
+  input[type=url]:focus { outline: none; border-color: var(--accent); }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+  h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; }
+  .item:hover { background: var(--hover); }
+  .item span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item button { height: 24px; width: 24px; padding: 0; background: none; color: var(--muted); visibility: hidden; }
+  .item:hover button { visibility: visible; }
+  .empty { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="now">
+    <div class="disc" id="disc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></div>
+    <div class="meta"><b id="title">Bir şey çalmıyor</b><span id="sub">Aşağıya bir yayın adresi yapıştır</span></div>
+    <div class="btns" id="btns"></div>
+  </div>
+  <div class="vol" id="volrow" hidden><span>Ses</span><input type="range" id="vol" min="0" max="100"><span id="volv"></span></div>
+  <form id="f"><input type="url" id="url" placeholder="https://… yayın ya da ses bağlantısı" required><button class="primary">Çal</button></form>
+  <p class="hint">Radyo yayın adresleri (mp3/aac akışı) ya da doğrudan ses dosyası bağlantısı.</p>
+  <h4>Son çalınanlar</h4>
+  <div id="recent"><div class="empty">Henüz yok.</div></div>
+<script>
+  // Bunker plugin penceresi: durum panelden gelir ({bunker:"state"}), islemler panele gider ({bunker:"action"})
+  const $ = (id) => document.getElementById(id);
+  const act = (name, data) => parent.postMessage({ bunker: "action", name, data }, "*");
+  const ICON = {
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  };
+  const btn = (icon, title, fn) => { const b = document.createElement("button"); b.className = "icon"; b.title = title; b.innerHTML = ICON[icon]; b.onclick = fn; return b; };
+  let volTimer = 0, dragging = false, asked = false;
+
+  function render(st) {
+    const n = st?.now;
+    $("disc").classList.toggle("on", Boolean(n?.playing && !n.paused));
+    $("title").textContent = n ? n.label : "Bir şey çalmıyor";
+    const sub = $("sub");
+    sub.className = n?.error ? "err" : "";
+    sub.textContent = !n ? "Aşağıya bir yayın adresi yapıştır" : n.error ? n.error : n.paused ? "Duraklatıldı · " + n.by : n.playing ? "Çalıyor · " + n.by : "Bağlanıyor…";
+    const b = $("btns");
+    b.replaceChildren();
+    if (n) {
+      b.append(n.paused ? btn("play", "Devam", () => act("resume")) : btn("pause", "Duraklat", () => act("pause")));
+      b.append(btn("stop", "Durdur ve kanaldan çık", () => act("stop")));
+    }
+    $("volrow").hidden = !n;
+    if (n && !dragging) { $("vol").value = n.volume; $("volv").textContent = "%" + n.volume; }
+    const r = $("recent");
+    r.replaceChildren();
+    const list = st?.recent ?? [];
+    if (!list.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Henüz yok."; r.append(e); }
+    for (const it of list) {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.title = it.url;
+      const s = document.createElement("span"); s.textContent = it.label;
+      const x = btn("x", "Listeden çıkar", (e) => { e.stopPropagation(); act("forget", { url: it.url }); });
+      row.append(s, x);
+      row.onclick = () => act("play", { url: it.url });
+      r.append(row);
+    }
+  }
+  window.addEventListener("message", (e) => {
+    const m = e.data;
+    if (e.source !== parent || !m || m.bunker !== "state") return;
+    const t = m.ctx?.theme;
+    if (t) for (const k of ["bg", "text", "muted", "accent", "border", "hover"]) if (t[k]) document.documentElement.style.setProperty("--" + k, t[k]);
+    render(m.state);
+    // Hic durum yoksa (son calinanlar icin) bir kez sor
+    if (!m.state && !asked) { asked = true; act("hello"); }
+  });
+  $("f").onsubmit = (e) => { e.preventDefault(); act("play", { url: $("url").value.trim() }); $("url").value = ""; };
+  $("vol").oninput = () => {
+    dragging = true;
+    $("volv").textContent = "%" + $("vol").value;
+    clearTimeout(volTimer);
+    volTimer = setTimeout(() => { act("volume", { v: Number($("vol").value) }); dragging = false; }, 150);
+  };
+  parent.postMessage({ bunker: "ready" }, "*");
+</script>
+</body>
+</html>

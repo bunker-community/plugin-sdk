@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bunker Plugin SDK (@bunker-community/plugin-sdk 0.1.4)</title>
+<style>
+:root { --bg:#ffffff; --text:#1f2328; --muted:#59636e; --line:#d8dee4; --soft:#f6f8fa; --accent:#5b5bd6; --code:#eff1f3; }
+@media (prefers-color-scheme: dark) { :root:not([data-print]) { --bg:#16171a; --text:#e6e7ea; --muted:#9aa0a8; --line:#2c2e33; --soft:#1d1f23; --accent:#8b8bff; --code:#24262b; } }
+* { box-sizing: border-box; }
+html { scroll-padding-top: 64px; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: var(--bg); border-bottom: 1px solid var(--line); }
+header b { font-size: 15px; }
+header .sp { flex: 1; }
+header a { color: var(--muted); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 6px; }
+header a:hover, header a.on { color: var(--text); background: var(--soft); }
+main { max-width: 920px; margin: 0 auto; padding: 24px 24px 80px; }
+h1 { font-size: 30px; line-height: 1.25; margin: 8px 0 12px; }
+h2 { font-size: 22px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 17px; margin: 28px 0 8px; }
+h4 { font-size: 15px; margin: 20px 0 6px; }
+h1 code, h2 code, h3 code { font-size: .9em; }
+a { color: var(--accent); }
+p, li { overflow-wrap: anywhere; }
+hr { display: none; }
+code { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+pre code { background: none; padding: 0; white-space: pre; }
+.tw { overflow-x: auto; margin: 12px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border: 1px solid var(--line); }
+th { background: var(--soft); font-weight: 600; }
+blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--accent); background: var(--soft); color: var(--muted); }
+@media (max-width: 640px) { main { padding: 16px; } header { padding: 10px 16px; } h1 { font-size: 24px; } }
+@media print {
+  header { display: none; }
+  main { max-width: none; padding: 0; }
+  body { font-size: 11pt; }
+  h2 { break-after: avoid; } pre, table, blockquote { break-inside: avoid; }
+  pre { white-space: pre-wrap; } pre code { white-space: pre-wrap; }
+  a { color: inherit; text-decoration: none; }
+}
+@page { margin: 16mm 14mm; }
+</style>
+</head>
+<body>
+<header><b>Bunker Plugin SDK</b><span class="muted">0.1.4</span><span class="sp"></span>
+<a href="./">Türkçe</a><a href="en" class="on">English</a>
+<a href="bunker-plugin-api-en.pdf">PDF</a></header>
+<main>
+<h1 id="bunker-plugin-sdk-bunker-communityplugin-sdk-014">Bunker Plugin SDK (<code>@bunker-community/plugin-sdk</code> 0.1.4)</h1>
+<p>API reference for writing Bunker bots / plugins. (Türkçe: <a href="./">API.md</a>)</p>
+<p>A plugin runs in one of two ways; <strong>the code and the API are the same</strong> (<code>definePlugin({ setup(ctx) {…} })</code>):</p>
+<div class="tw"><table><thead><tr><th></th><th>Remote plugin (anyone)</th><th>Built into Bunker (first party)</th></tr></thead><tbody><tr><td>Where the code runs</td><td>On your computer / server, or, once approved, in a restricted process on Bunker (<a href="#running-on-bunker-hosting">hosting</a>)</td><td>On the Bunker server, <code>plugins/&lt;id&gt;/</code></td></tr><tr><td>Connection</td><td><code>connect(plugin, { token })</code> → gateway (WebSocket)</td><td>Loaded by Bunker</td></tr><tr><td>Who adds it</td><td>You: Settings → Developer</td><td>The Bunker team (repo + deploy)</td></tr><tr><td>Which servers</td><td>While unverified, only servers you manage; once the site admin lists it in the Store (verified), everyone</td><td>Everyone, once the site admin lists it</td></tr><tr><td>Difference</td><td>Cannot send raw PCM to voice channels (no <code>playPcm</code>); the bot shows offline while your code is not running</td><td>—</td></tr></tbody></table></div>
+<h2 id="contents">Contents</h2>
+<ol><li><a href="#quick-start">Quick start</a></li><li><a href="#manifest-bunker-pluginjson">Manifest: <code>bunker-plugin.json</code></a></li><li><a href="#permissions">Permissions</a></li><li><a href="#lifecycle">Lifecycle</a></li><li><a href="#plugincontext-ctx"><code>PluginContext</code> (ctx)</a></li><li><a href="#events">Events</a></li><li><a href="#commands">Commands</a></li><li><a href="#sending-messages">Sending messages</a></li><li><a href="#storage">Storage</a></li><li><a href="#voice">Voice</a></li><li><a href="#window-panel-ui">Window (panel UI)</a></li><li><a href="#running-on-bunker-hosting">Running on Bunker (hosting)</a></li><li><a href="#limits">Limits</a></li><li><a href="#versions-and-compatibility">Versions and compatibility</a></li><li><a href="#publishing-and-adding-to-servers">Publishing and adding to servers</a></li><li><a href="#gateway-protocol-connecting-without-the-sdk">Gateway protocol (connecting without the SDK)</a></li><li><a href="#examples">Examples</a></li></ol>
+<hr>
+<h2 id="quick-start">Quick start</h2>
+<h3 id="remote-plugin-on-your-own-computer">Remote plugin (on your own computer)</h3>
+<ol><li>In Bunker, <strong>Settings → Developer → New plugin</strong>: type a name, click &quot;Create&quot;. Copy the <strong>token</strong> shown (it is shown only once; if you lose it, use &quot;Regenerate token&quot;).</li><li>In an empty folder (Node.js 22+):</li></ol>
+<pre><code>npm init -y
+npm install @bunker-community/plugin-sdk</code></pre>
+<p>Add <code>&quot;type&quot;: &quot;module&quot;</code> to <code>package.json</code>. Create two files:</p>
+<p><code>bunker-plugin.json</code> (no id: it comes from the token)</p>
+<pre><code>{
+  &quot;name&quot;: &quot;Hello Bot&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;description&quot;: &quot;Replies to !hello.&quot;,
+  &quot;sdk&quot;: &quot;0.1&quot;,
+  &quot;permissions&quot;: [&quot;events.messages&quot;, &quot;chat.send&quot;, &quot;storage&quot;]
+}</code></pre>
+<p><code>index.js</code></p>
+<pre><code>import { connect, definePlugin } from &quot;@bunker-community/plugin-sdk&quot;;
+
+const plugin = definePlugin({
+  setup(ctx) {
+    ctx.command(&quot;hello&quot;, async (c) =&gt; {
+      const n = ((await ctx.storage.get(`n:${c.uid}`)) ?? 0) + 1;
+      await ctx.storage.set(`n:${c.uid}`, n);
+      await c.reply(`Hello ${c.nick}! (${n} times)`);
+    });
+  },
+});
+
+connect(plugin, { token: process.env.BUNKER_TOKEN });</code></pre>
+<ol start="3"><li>Run it: <code>BUNKER_TOKEN=&lt;token&gt; node index.js</code> (PowerShell: <code>$env:BUNKER_TOKEN=&quot;&lt;token&gt;&quot;; node index.js</code>). Once it prints &quot;bağlandı&quot; (connected), the plugin shows &quot;Connected&quot; under Settings → Developer.</li><li>On your server: <strong>Server settings → Plugins</strong> (or the Plugin Store) → Add → approve the permissions. Type <code>!hello</code> in a channel.</li></ol>
+<p>Types are included for TypeScript (<code>import type { PluginContext } from &quot;@bunker-community/plugin-sdk&quot;</code>).</p>
+<p><code>connect(plugin, options)</code>:</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Description</th></tr></thead><tbody><tr><td><code>token</code></td><td>Required. Don't put the token in code; read it from an environment variable.</td></tr><tr><td><code>url</code></td><td>Gateway address, default <code>wss://bunker.community/app/api/plugin/gateway</code>.</td></tr><tr><td><code>manifest</code></td><td>Manifest object. If omitted, <code>bunker-plugin.json</code> in <code>dir</code> is read; if that is missing too, the manifest stored on Bunker is used.</td></tr><tr><td><code>dir</code></td><td>Folder of <code>bunker-plugin.json</code> and the window page (default: working directory).</td></tr><tr><td><code>uiPage</code></td><td>HTML of the window page (if omitted, the <code>manifest.ui.page</code> file is read from <code>dir</code>).</td></tr><tr><td><code>logger</code></td><td>Connection logs (default <code>console</code>).</td></tr></tbody></table></div>
+<p>Returns <code>{ ready: Promise&lt;void&gt;, connected: boolean, close(): Promise&lt;void&gt; }</code>. If the connection drops it reconnects by itself (waiting 1 s → 30 s), re-registering listeners and commands. It does not retry and <code>ready</code> rejects if the token is invalid, the plugin was disabled, the manifest is invalid, or another connection was opened with the same token.</p>
+<p>The manifest and window page are sent on every connect and updated on Bunker if they changed. If you add a new permission, the plugin stops working on servers where it is installed until it is approved again there.</p>
+<p>While your code is not running: the bot shows offline in the member list, commands get no reply, voice sessions close. To keep it always on, run it on a server (VPS, Raspberry Pi…) with <code>pm2</code> or systemd, or let <a href="#running-on-bunker-hosting">Bunker host it</a>.</p>
+<h3 id="built-into-bunker-first-party">Built into Bunker (first party)</h3>
+<pre><code>plugins/hello/
+├── bunker-plugin.json
+├── package.json
+├── tsconfig.json
+└── src/index.ts</code></pre>
+<p><code>bunker-plugin.json</code></p>
+<pre><code>{
+  &quot;id&quot;: &quot;hello&quot;,
+  &quot;name&quot;: &quot;Hello Bot&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;description&quot;: &quot;Replies to !hello.&quot;,
+  &quot;author&quot;: &quot;Your Name&quot;,
+  &quot;sdk&quot;: &quot;0.1&quot;,
+  &quot;permissions&quot;: [&quot;events.messages&quot;, &quot;chat.send&quot;, &quot;storage&quot;]
+}</code></pre>
+<p><code>package.json</code></p>
+<pre><code>{ &quot;name&quot;: &quot;@bunker/plugin-hello&quot;, &quot;version&quot;: &quot;0.1.0&quot;, &quot;type&quot;: &quot;module&quot;, &quot;private&quot;: true,
+  &quot;dependencies&quot;: { &quot;@bunker-community/plugin-sdk&quot;: &quot;*&quot; } }</code></pre>
+<p><code>tsconfig.json</code></p>
+<pre><code>{ &quot;extends&quot;: &quot;../../tsconfig.base.json&quot;, &quot;include&quot;: [&quot;src&quot;, &quot;*.ts&quot;] }</code></pre>
+<p><code>src/index.ts</code></p>
+<pre><code>import { definePlugin } from &quot;@bunker-community/plugin-sdk&quot;;
+
+export default definePlugin({
+  setup(ctx) {
+    ctx.command(&quot;hello&quot;, async (c) =&gt; {
+      const n = ((await ctx.storage.get&lt;number&gt;(`n:${c.uid}`)) ?? 0) + 1;
+      await ctx.storage.set(`n:${c.uid}`, n);
+      await c.reply(`Hello ${c.nick}! (${n} times)`);
+    });
+  },
+});</code></pre>
+<p>Then run <code>npm install</code> at the repo root, add the folder to the root <code>package.json</code> → <code>typecheck</code> script, run <code>npm run typecheck</code>. Restart Bunker → Admin panel → System → Plugins → enable → add it from server settings. Because the code runs inside the Bunker process, this path is only for plugins written or reviewed by the Bunker team.</p>
+<p>Files are TypeScript without a build step (Node 22 strips types). So don't use syntax that type stripping cannot handle (<code>enum</code>, <code>namespace</code>, parameter properties like <code>constructor(private x)</code>), and write the <code>.ts</code> extension in imports.</p>
+<hr>
+<h2 id="manifest-bunker-pluginjson">Manifest: <code>bunker-plugin.json</code></h2>
+<div class="tw"><table><thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td>yes*</td><td>*Omitted for remote plugins (it's the token's plugin, <code>ext-xxxxxxxx</code>). Lowercase letters, digits, dashes; 2-28 characters, cannot start or end with a dash. <strong>Must match the folder name.</strong> Permanent identity: storage, settings and the bot identity depend on it; don't change it later.</td></tr><tr><td><code>name</code></td><td>yes</td><td>Display name, ≤40. Also the bot's name in messages (server admins can rename it on their server).</td></tr><tr><td><code>version</code></td><td>yes</td><td><code>x.y.z</code> (optional suffix like <code>-beta.1</code>).</td></tr><tr><td><code>sdk</code></td><td>yes</td><td>Compatible SDK version: <code>&quot;0.1&quot;</code> (see <a href="#versions-and-compatibility">Versions</a>).</td></tr><tr><td><code>permissions</code></td><td>yes</td><td>Array of permissions (may be empty).</td></tr><tr><td><code>description</code></td><td>no</td><td>≤300. Shown in the Store and server settings.</td></tr><tr><td><code>author</code></td><td>no</td><td>≤80.</td></tr><tr><td><code>main</code></td><td>no</td><td>Entry file, default <code>src/index.ts</code> (built-in plugins only).</td></tr><tr><td><code>ui</code></td><td>no</td><td>Panel window, see <a href="#window-panel-ui">Window</a>.</td></tr></tbody></table></div>
+<p>An invalid manifest is not loaded; errors show in the admin panel. You can validate it yourself:</p>
+<pre><code>import { validateManifest } from &quot;@bunker-community/plugin-sdk&quot;;
+const r = validateManifest(JSON.parse(text)); // { ok: true, manifest } | { ok: false, errors: string[] }</code></pre>
+<hr>
+<h2 id="permissions">Permissions</h2>
+<p>A plugin can only do what the permissions in its manifest allow; calls without permission throw. The server owner approves this list when adding the plugin. If an update <strong>asks for a new permission</strong>, the plugin stops working on that server until it is approved again. Don't ask for permissions you don't need.</p>
+<div class="tw"><table><thead><tr><th>Permission</th><th>Shown to the server owner</th><th>Unlocks</th></tr></thead><tbody><tr><td><code>events.messages</code></td><td>Reads messages in text channels, replies to commands</td><td><code>message.*</code> events, <code>ctx.command</code></td></tr><tr><td><code>events.voice</code></td><td>Sees who joins and leaves voice channels</td><td><code>voice.*</code> events</td></tr><tr><td><code>events.members</code></td><td>Sees members joining and leaving the server</td><td><code>member.*</code>, <code>guild.create/delete</code></td></tr><tr><td><code>events.channels</code></td><td>Sees channels being created, changed and deleted</td><td><code>channel.*</code></td></tr><tr><td><code>events.presence</code></td><td>Sees whether members are online</td><td><code>user.online/offline</code></td></tr><tr><td><code>chat.send</code></td><td>Posts messages in text channels under its own name</td><td><code>ctx.chat.send</code>, <code>CommandCall.reply</code></td></tr><tr><td><code>storage</code></td><td>Stores its own data on Bunker</td><td><code>ctx.storage</code></td></tr><tr><td><code>voice.speak</code></td><td>Joins voice channels and plays audio</td><td><code>ctx.voice</code></td></tr></tbody></table></div>
+<p><code>ctx.ui</code> (window) and <code>ctx.log</code> need no permission.</p>
+<p><strong>Scope:</strong> a plugin only hears events from <strong>servers it is installed on</strong>, and only writes / joins voice channels there. Direct messages (DMs) are never sent to plugins.</p>
+<hr>
+<h2 id="lifecycle">Lifecycle</h2>
+<pre><code>export default definePlugin({
+  async setup(ctx) {
+    // Called once when the plugin starts. Set up listeners here.
+    ctx.onUnload(async () =&gt; {
+      // On shutdown: stop timers, save state to storage if needed.
+    });
+  },
+});</code></pre>
+<ul><li>If <code>setup</code> throws, the plugin goes into the <code>error</code> state.</li><li>When the plugin is stopped (admin panel, server restart, error budget exceeded): all listeners are released, voice sessions close, <code>onUnload</code> functions run. Storage still works inside <code>onUnload</code>. On server shutdown plugins get <strong>at most 3 s</strong> in total.</li><li>After shutdown every call on the old <code>ctx</code> throws <code>&quot;plugin kapalı&quot;</code>; clean up anything you started yourself (<code>setTimeout</code> etc.) in <code>onUnload</code>.</li><li>Built-in plugins: code changes need a server restart (module cache).</li><li><strong>Error budget:</strong> if your listeners throw 10 errors within 60 s, the plugin stops itself.</li></ul>
+<hr>
+<h2 id="plugincontext-ctx"><code>PluginContext</code> (ctx)</h2>
+<div class="tw"><table><thead><tr><th>Member</th><th>Description</th></tr></thead><tbody><tr><td><code>ctx.manifest</code></td><td>Validated manifest (read-only).</td></tr><tr><td><code>ctx.log.info/warn/error(msg, ctx?)</code></td><td>Writes to Bunker's logs with the <code>plugin</code> tag.</td></tr><tr><td><code>ctx.on(event, fn)</code></td><td>Listen to an event; the returned function stops listening.</td></tr><tr><td><code>ctx.command(name, fn)</code></td><td><code>!name</code> command.</td></tr><tr><td><code>ctx.chat.send(channel, text)</code></td><td>Message to a text channel.</td></tr><tr><td><code>ctx.storage</code></td><td>Persistent key-value storage.</td></tr><tr><td><code>ctx.voice.join(cid)</code> / <code>ctx.voice.session(cid)</code></td><td>Voice channel session.</td></tr><tr><td><code>ctx.ui.setState(where, state, opts?)</code> / <code>ctx.ui.onAction(fn)</code></td><td>Panel window.</td></tr><tr><td><code>ctx.onUnload(fn)</code></td><td>Cleanup on shutdown.</td></tr></tbody></table></div>
+<p>All event data is a <strong>copy</strong> from the core; changing it does not affect Bunker.</p>
+<hr>
+<h2 id="events">Events</h2>
+<pre><code>ctx.on(&quot;member.join&quot;, (e) =&gt; ctx.log.info(&quot;new member&quot;, { gid: e.gid, uid: e.uid }));</code></pre>
+<div class="tw"><table><thead><tr><th>Event</th><th>Data</th><th>Permission</th></tr></thead><tbody><tr><td><code>message.create</code></td><td><code>{ scope: &quot;text&quot;, gid, chan, m: PluginMessage }</code></td><td><code>events.messages</code></td></tr><tr><td><code>message.edit</code></td><td><code>{ scope, gid, chan, m }</code></td><td><code>events.messages</code></td></tr><tr><td><code>message.delete</code></td><td><code>{ scope, gid, chan, id, by }</code></td><td><code>events.messages</code></td></tr><tr><td><code>message.react</code></td><td><code>{ scope, gid, chan, id, uid, emoji, added }</code></td><td><code>events.messages</code></td></tr><tr><td><code>voice.join</code></td><td><code>{ gid, cid, uid, bot }</code></td><td><code>events.voice</code></td></tr><tr><td><code>voice.move</code></td><td><code>{ gid, cid, uid, bot, from }</code></td><td><code>events.voice</code></td></tr><tr><td><code>voice.leave</code></td><td><code>{ gid, cid, uid, bot }</code></td><td><code>events.voice</code></td></tr><tr><td><code>member.join</code> / <code>member.leave</code></td><td><code>{ gid, uid }</code></td><td><code>events.members</code></td></tr><tr><td><code>guild.create</code></td><td><code>{ gid, owner }</code></td><td><code>events.members</code></td></tr><tr><td><code>guild.delete</code></td><td><code>{ gid }</code></td><td><code>events.members</code></td></tr><tr><td><code>channel.create/update/delete</code></td><td><code>{ gid, kind: &quot;text&quot; | &quot;voice&quot;, id }</code></td><td><code>events.channels</code></td></tr><tr><td><code>user.online</code> / <code>user.offline</code></td><td><code>{ uid }</code> (only for members of a server you are installed on)</td><td><code>events.presence</code></td></tr><tr><td><code>guild.install</code></td><td><code>{ gid, by }</code>: the plugin was added to this server</td><td>—</td></tr><tr><td><code>guild.uninstall</code></td><td><code>{ gid }</code>: removed, or the server was deleted; <strong>delete that server's data here</strong></td><td>—</td></tr></tbody></table></div>
+<pre><code>interface PluginMessage {
+  id: string; ts: number; uid: string; nick: string;
+  text: string;          // raw text: mentions as &lt;@uid&gt;, custom emoji as &lt;:name:id&gt;
+  system: boolean;       // system line such as &quot;... pinned a message&quot;
+  bot: boolean;          // written by a bot or plugin (including yours: avoid loops!)
+  attachments: number;   // number of images/videos
+  replyTo?: string; edited?: number;
+}</code></pre>
+<p>Events arrive after the core has finished its work (deferred): a slow listener never blocks Bunker, and your reply appears after the user's message.</p>
+<hr>
+<h2 id="commands">Commands</h2>
+<pre><code>ctx.command(&quot;dice&quot;, async (c) =&gt; {
+  const sides = Number(c.args) || 6;
+  await c.reply(`${c.nick} rolled: ${1 + Math.floor(Math.random() * sides)}`);
+});</code></pre>
+<ul><li>Permission: <code>events.messages</code> (plus <code>chat.send</code> to reply).</li><li>Name: letters, digits, <code>_</code>, <code>-</code>; 1-32 characters; lowercased; written without <code>!</code>.</li><li>Triggered only in text channels, only when a <strong>human</strong> writes it (bots cannot run commands).</li><li>Bunker's own commands (<code>!play</code>, <code>!skip</code>, <code>!rank</code>, <code>!bug</code> …) and names taken by another plugin cannot be used (<code>setup</code> throws).</li></ul>
+<pre><code>interface CommandCall {
+  gid: string; chan: string; uid: string; nick: string;
+  args: string;                 // text after the command
+  m: PluginMessage;
+  reply(text: string): Promise&lt;void&gt;; // to the same channel
+}</code></pre>
+<hr>
+<h2 id="sending-messages">Sending messages</h2>
+<pre><code>const r = await ctx.chat.send(chanId, &quot;Hello!&quot;); // { id } | null</code></pre>
+<ul><li>Permission <code>chat.send</code>. Only to text channels of servers you are installed on.</li><li>Shown under the plugin's name (or the name given on that server) with a BOT tag.</li><li>At most 10 messages per 10 s; more throws.</li><li>Write mentions as <code>&lt;@uid&gt;</code>.</li></ul>
+<hr>
+<h2 id="storage">Storage</h2>
+<pre><code>await ctx.storage.set(&quot;config:&quot; + gid, { lang: &quot;en&quot; });
+const a = await ctx.storage.get&lt;{ lang: string }&gt;(&quot;config:&quot; + gid); // undefined if missing
+await ctx.storage.delete(&quot;config:&quot; + gid);
+const keys = await ctx.storage.keys(&quot;config:&quot;);</code></pre>
+<ul><li>Permission <code>storage</code>. Private to the plugin (other plugins can't see it), stored in Bunker's database, survives restarts.</li><li>Values must be JSON-serializable, ≤64 KB. Keys 1-200 characters; ≤10,000 keys per plugin.</li><li>One store <strong>shared by all servers</strong>: prefix per-server data with <code>gid</code> and delete it on <code>guild.uninstall</code>.</li></ul>
+<hr>
+<h2 id="voice">Voice</h2>
+<p>Permission <code>voice.speak</code>. One session per voice channel (the bot shows up as a separate member in the channel).</p>
+<pre><code>const s = await ctx.voice.join(cid);   // same session if already there
+s.setVolume(30);
+s.on(&quot;started&quot;, () =&gt; ctx.log.info(&quot;playing&quot;));
+s.on(&quot;ended&quot;, () =&gt; ctx.log.info(&quot;finished&quot;));
+s.on(&quot;error&quot;, (why, { silent }) =&gt; { if (!silent) ctx.log.warn(why); });
+s.on(&quot;leave&quot;, (why) =&gt; ctx.log.info(&quot;left: &quot; + why));
+await s.playMedia(&quot;daft punk one more time&quot;);</code></pre>
+<p><code>ctx.voice.session(cid)</code> returns the open session (or <code>null</code>).</p>
+<h3 id="voicesession"><code>VoiceSession</code></h3>
+<div class="tw"><table><thead><tr><th>Member</th><th>Description</th></tr></thead><tbody><tr><td><code>gid</code>, <code>cid</code></td><td>Server and channel.</td></tr><tr><td><code>playing</code>, <code>paused</code>, <code>volume</code> (0-100), <code>connected</code></td><td>State (read-only).</td></tr><tr><td><code>playMedia(query, { seek? })</code></td><td>YouTube / SoundCloud link, radio stream or search text (searched on YouTube, SoundCloud if blocked). Track info arrives via the <code>meta</code> event.</td></tr><tr><td><code>prefetch(query)</code></td><td>Resolve the next track in advance (faster transitions; valid for 30 min).</td></tr><tr><td><code>playUrl(url, { seek? })</code></td><td>Direct http(s) audio URL (radio, mp3…). Internal network addresses are rejected.</td></tr><tr><td><code>playPcm(stream)</code></td><td>Your own audio: 48 kHz, stereo, 16-bit little-endian raw PCM, <code>AsyncIterable&lt;Uint8Array&gt;</code>. Built-in plugins only.</td></tr><tr><td><code>stop()</code>, <code>pause()</code>, <code>resume()</code></td><td>A new <code>play*</code> stops what is playing.</td></tr><tr><td><code>setVolume(v)</code></td><td>0-100.</td></tr><tr><td><code>leave()</code></td><td>Leave the channel.</td></tr><tr><td><code>on(event, fn)</code> → unsubscribe function</td><td><code>started</code> (first audio sent), <code>ended</code> (stream finished), <code>error(why, { silent })</code> (could not play; <code>silent</code> = e.g. YouTube blocking, no need to show users), <code>meta(MediaMeta)</code>, <code>leave(why)</code>.</td></tr></tbody></table></div>
+<pre><code>interface MediaMeta { title: string; artist: string; duration: number /* s, 0 for live */; thumb: string; src: string; url: string }</code></pre>
+<ul><li>The session closes 60 s after no humans are left, immediately when the channel is deleted, and when the plugin is removed from the server or stopped (<code>leave</code> event).</li><li>At most 12 plugin voice sessions across Bunker at once.</li></ul>
+<hr>
+<h2 id="window-panel-ui">Window (panel UI)</h2>
+<p>A plugin can show an icon in the plugin group at the bottom left of the panel, and a window that opens on click.</p>
+<pre><code>&quot;ui&quot;: { &quot;title&quot;: &quot;Music&quot;, &quot;icon&quot;: &quot;music&quot;, &quot;page&quot;: &quot;ui/index.html&quot;, &quot;scope&quot;: &quot;voice&quot; }</code></pre>
+<div class="tw"><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td><code>title</code></td><td>Window title (≤40).</td></tr><tr><td><code>icon</code></td><td>Panel icon name (below); default <code>plug</code>.</td></tr><tr><td><code>page</code></td><td>An <code>.html</code> file in the plugin folder.</td></tr><tr><td><code>scope</code></td><td><code>&quot;voice&quot;</code>: only visible while in one of that server's voice channels, state <strong>per channel</strong>. <code>&quot;guild&quot;</code>: always visible on the server, state per server.</td></tr></tbody></table></div>
+<p>Available icons: <code>dots copy ticket hash pin volume mic micOff headphones headphonesOff gear users lock plus chevron x menu send clip moon sun plug radio store arrowIn arrowOut volumeX ban hand edit trash user info mute rec screen camera moveTo logout shield compass userPlus check search door music shuffle skip play pause list smile smilePlus reply message maximize gamepad monitor tv download sleep clock crown live phone phoneOff video bell at keyboard palette key</code>.</p>
+<h3 id="model-state-down-actions-up">Model: state down, actions up</h3>
+<pre><code>plugin (server)  ── ctx.ui.setState ──▶  panel  ── postMessage {bunker:&quot;state&quot;} ──▶  page (iframe)
+plugin (server)  ◀── ctx.ui.onAction ──  panel  ◀── postMessage {bunker:&quot;action&quot;} ──  page</code></pre>
+<p>The page cannot connect anywhere by itself; all logic lives in the plugin, the page only renders state and forwards clicks.</p>
+<p><strong>Plugin side</strong></p>
+<pre><code>ctx.ui.onAction(async (a) =&gt; {
+  // a: { gid, cid?, uid, nick, name, data }
+  if (a.name === &quot;counter.inc&quot;) {
+    const n = ((await ctx.storage.get&lt;number&gt;(&quot;n:&quot; + a.gid)) ?? 0) + 1;
+    await ctx.storage.set(&quot;n:&quot; + a.gid, n);
+    ctx.ui.setState({ gid: a.gid }, { n, last: a.nick });
+  }
+});</code></pre>
+<ul><li><code>setState({ gid, cid? }, state, { live? })</code>: sent immediately to everyone on that server (in that channel for scope <code>voice</code>); users who connect later get the latest state too. JSON, ≤32 KB. <code>live: true</code> → the icon at the bottom left lights up (e.g. while playing). <code>null</code> → clear. State is kept in memory and lost on restart (save to storage if needed).</li><li><code>onAction</code>: Bunker checks first that the user is a member of the server and, for scope <code>voice</code>, is in that channel. ≤10 actions per second per user, <code>data</code> ≤4 KB. Still, treat <code>data</code> as <strong>untrusted input</strong> and validate it.</li><li>When the page first opens and there is no state yet, <code>state: null</code> arrives; sending a <code>&quot;hello&quot;</code> action and publishing state in response is a good habit.</li></ul>
+<p><strong>Page side (<code>ui/index.html</code>)</strong></p>
+<pre><code>&lt;!doctype html&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;style&gt;
+  :root { --bg:#1e1f22; --text:#dbdee1; --accent:#6c6cff; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font:14px system-ui; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 12px; }
+&lt;/style&gt;
+&lt;p id=&quot;t&quot;&gt;…&lt;/p&gt;
+&lt;button id=&quot;b&quot;&gt;Increment&lt;/button&gt;
+&lt;script&gt;
+  const act = (name, data) =&gt; parent.postMessage({ bunker: &quot;action&quot;, name, data }, &quot;*&quot;);
+  addEventListener(&quot;message&quot;, (e) =&gt; {
+    const m = e.data;
+    if (e.source !== parent || m?.bunker !== &quot;state&quot;) return;
+    for (const [k, v] of Object.entries(m.ctx.theme)) if (typeof v === &quot;string&quot;) document.documentElement.style.setProperty(&quot;--&quot; + k, v);
+    if (!m.state) return act(&quot;hello&quot;);
+    document.getElementById(&quot;t&quot;).textContent = `Counter: ${m.state.n} (last: ${m.state.last})`;
+  });
+  document.getElementById(&quot;b&quot;).onclick = () =&gt; act(&quot;counter.inc&quot;);
+  parent.postMessage({ bunker: &quot;ready&quot; }, &quot;*&quot;);
+&lt;/script&gt;</code></pre>
+<p>Messages:</p>
+<div class="tw"><table><thead><tr><th>Direction</th><th>Message</th></tr></thead><tbody><tr><td>page → panel</td><td><code>{ bunker: &quot;ready&quot; }</code> (ready, send state) · <code>{ bunker: &quot;action&quot;, name, data? }</code> · <code>{ bunker: &quot;close&quot; }</code> (close the window)</td></tr><tr><td>panel → page</td><td><code>{ bunker: &quot;state&quot;, state, ctx: { gid, cid, me: { uid, nick }, theme: { dark, bg, text, muted, accent, border, hover } } }</code></td></tr></tbody></table></div>
+<p>Page rules:</p>
+<ul><li>Opens inside <code>&lt;iframe sandbox=&quot;allow-scripts&quot;&gt;</code> on a separate origin: no access to the panel's cookies, data or DOM.</li><li>CSP: no network requests (<code>fetch</code>, WebSocket, forms); scripts and styles inline or from the plugin folder, fonts from <code>data:</code> or the folder. Images may load from <code>https:</code>, <code>data:</code> or the folder (e.g. cover art). A <strong>single file</strong> is recommended (remote plugins: required).</li><li>The page is served only from the folder of <code>ui.page</code> (<code>/plugin-ui/&lt;id&gt;/…</code>).</li><li>The panel's translation is not applied to the page; <code>ctx</code> has no language yet, choose your own texts.</li><li>Take colors from <code>ctx.theme</code> so the page fits light and dark themes.</li></ul>
+<hr>
+<h2 id="running-on-bunker-hosting">Running on Bunker (hosting)</h2>
+<p>If you can't keep your code running on an always-on machine, Bunker can run it. The code is the same; it is just bundled into one file and reviewed by the Bunker team.</p>
+<ol><li>Bundle your code into <strong>a single ESM file</strong>. No imports other than <code>@bunker-community/plugin-sdk</code> may remain:</li></ol>
+<pre><code>npx esbuild index.js --bundle --format=esm --platform=neutral --external:@bunker-community/plugin-sdk --outfile=bundle.mjs</code></pre>
+<p>The file must contain <code>export default definePlugin({ … })</code> and must <strong>not</strong> call <code>connect()</code> (Bunker connects it). To run the same code both on your computer and on Bunker, put <code>connect</code> in a separate file:</p>
+<pre><code>// plugin.js: the part uploaded to Bunker
+import { definePlugin } from &quot;@bunker-community/plugin-sdk&quot;;
+export default definePlugin({ setup(ctx) { /* … */ } });
+
+// local.js: only on your computer
+import { connect } from &quot;@bunker-community/plugin-sdk&quot;;
+import plugin from &quot;./plugin.js&quot;;
+connect(plugin, { token: process.env.BUNKER_TOKEN });</code></pre>
+<ol start="2"><li><strong>Settings → Developer</strong> → <strong>Upload code</strong> on your plugin's row: select <code>bundle.mjs</code> + <code>bunker-plugin.json</code> (+ the <code>.html</code> page if it has a window) together. At most 1 MB.</li><li>The site admin reviews the code: you'll see <strong>Approved</strong> or <strong>Rejected</strong> (with a reason).</li><li>Once approved, click <strong>Run on Bunker</strong>. The row shows &quot;Running on Bunker&quot;. Connecting from your own computer with the same token is now rejected (code 4004); after <strong>Stop</strong> you can connect from your computer again.</li><li>If you upload new code, <strong>the previously approved version keeps running</strong> until the new one is approved.</li></ol>
+<p>Rules for hosted code (restricted process):</p>
+<div class="tw"><table><tbody><tr><td>Network</td><td>None: <code>fetch</code>, <code>WebSocket</code>, <code>http</code>, <code>net</code>, <code>dns</code>… are blocked. The only connection is the Bunker API.</td></tr><tr><td>Files</td><td>Only its own file can be read; no writing. <code>fs</code>, <code>os</code>, <code>child_process</code>, <code>worker_threads</code>, <code>vm</code> are blocked.</td></tr><tr><td>Environment</td><td>Empty environment variables; Bunker's keys, database and files are not visible.</td></tr><tr><td>Memory</td><td>128 MB (if exceeded, the process is killed and restarted).</td></tr><tr><td>CPU</td><td>Killed if the 1-minute average exceeds 60%, or if it doesn't respond for 20 s (infinite loop).</td></tr><tr><td>Crashes</td><td>Restarted (waiting 2 s → 60 s); after 5 crashes in 10 min it stops and the reason shows on the row.</td></tr><tr><td>Logs</td><td><code>console.log</code> / <code>console.error</code> go to Bunker's logs (at most 60 lines per minute).</td></tr><tr><td>Storage</td><td>The same storage: what you saved while running on your computer is still there when hosted.</td></tr></tbody></table></div>
+<p>A plugin that needs the network (e.g. a weather bot calling an external API) cannot be hosted; run it on your own machine.</p>
+<hr>
+<h2 id="limits">Limits</h2>
+<div class="tw"><table><thead><tr><th>What</th><th>Limit</th></tr></thead><tbody><tr><td>Plugins per server</td><td>25</td></tr><tr><td>Error budget</td><td>10 errors in 60 s → plugin stops</td></tr><tr><td><code>chat.send</code></td><td>10 messages per 10 s</td></tr><tr><td>Storage value / number of keys / key length</td><td>64 KB / 10,000 / 200</td></tr><tr><td>Window state</td><td>32 KB</td></tr><tr><td>Window action</td><td>10 per second per user, <code>data</code> ≤4 KB</td></tr><tr><td>Voice sessions (Bunker-wide)</td><td>12</td></tr><tr><td>Command name</td><td>1-32 characters</td></tr><tr><td>Remote plugins (per person)</td><td>5</td></tr><tr><td>Gateway</td><td>message ≤320 KB, ~30 calls per second</td></tr><tr><td>Hosted code</td><td>single file ≤1 MB, 128 MB memory, 60% CPU; 20 processes Bunker-wide</td></tr></tbody></table></div>
+<hr>
+<h2 id="versions-and-compatibility">Versions and compatibility</h2>
+<ul><li>SDK version <code>SDK_VERSION</code> (currently <code>0.1.4</code>). The <code>sdk</code> field in the manifest:<ul><li>During <code>0.x</code>, minor versions count as breaking: <code>&quot;0.1&quot;</code> → works with 0.1.x, not with 0.2.</li><li>After <code>1.0</code>: <code>&quot;1&quot;</code> or <code>&quot;1.2&quot;</code> → same major version, at least that minor version.</li></ul></li><li>Rule: fields are <strong>added</strong>, never removed or renamed. A breaking change bumps the major version.</li><li>Changes: 0.1.0 events, commands, storage, messages · 0.1.1 <code>guild.install/uninstall</code> · 0.1.2 voice (<code>voice.speak</code>, <code>playPcm/playUrl</code>) + window (<code>ui</code>) · 0.1.3 <code>playMedia</code>, <code>prefetch</code>, <code>meta</code>, <code>error.silent</code> · 0.1.4 remote plugins (<code>connect</code>), hosting.</li></ul>
+<hr>
+<h2 id="publishing-and-adding-to-servers">Publishing and adding to servers</h2>
+<p><strong>Remote plugin:</strong></p>
+<ol><li>Create it under Settings → Developer (at most 5 per person) and run your code.</li><li>While unverified it can only be added to servers where <strong>you</strong> have server settings permission. In the Store only you see it (with an &quot;Unverified&quot; tag).</li><li>To make it public, contact the Bunker team: if the site admin reviews it and enables &quot;Server owners can add it&quot; in the admin panel, everyone sees it in the Store (verified).</li><li>The site admin can disable an abusive plugin; its connection then closes (code 4003).</li><li>&quot;Delete&quot;: the plugin is removed from all servers and its storage is deleted.</li></ol>
+<p><strong>Built into Bunker (first party):</strong></p>
+<ol><li>The plugin is added to the repo as <code>plugins/&lt;id&gt;/</code>, reviewed, deployed, and Bunker is restarted.</li><li><strong>Site admin</strong> (Admin panel → System → Plugins): enables it (loads it) and optionally turns on &quot;Server owners can add it&quot; (listed in the Store). New plugins start disabled and unlisted.</li><li><strong>Server owner / anyone with <code>server.manage</code>:</strong> adds it from the Plugin Store or Server settings → Plugins and approves the permissions. The bot shows in the &quot;Bots&quot; group of the member list and can be renamed per server.</li><li>Logs: Admin panel → Logs, tag <code>plugin</code>.</li></ol>
+<p>Local testing tips: <code>PLUGINS_DIR</code> for another plugin folder, <code>PLUGIN_VOICE_WORKER</code> for a fake voice process, <code>PLUGIN_MEDIA_FAKE=&lt;s&gt;</code> for fake media (no yt-dlp or LiveKit needed).</p>
+<hr>
+<h2 id="gateway-protocol-connecting-without-the-sdk">Gateway protocol (connecting without the SDK)</h2>
+<p>The SDK is for Node.js. To write a bot in another language, connect to the gateway directly: JSON text messages over WebSocket <code>wss://bunker.community/app/api/plugin/gateway</code>. Messages ≤320 KB, ~30 calls per second (bursts up to 60).</p>
+<p><strong>1. Hello</strong> (first message, within 10 s):</p>
+<pre><code>{ &quot;op&quot;: &quot;hello&quot;, &quot;token&quot;: &quot;ext-…&quot;, &quot;sdk&quot;: &quot;0.1.4&quot;, &quot;manifest&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;uiPage&quot;: &quot;&lt;!doctype html&gt;…&quot; }</code></pre>
+<p><code>manifest</code> and <code>uiPage</code> are optional. Reply:</p>
+<pre><code>{ &quot;op&quot;: &quot;ready&quot;, &quot;v&quot;: 1, &quot;sdk&quot;: &quot;0.1.4&quot;, &quot;manifest&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;guilds&quot;: [{ &quot;gid&quot;: &quot;…&quot;, &quot;name&quot;: &quot;…&quot; }] }</code></pre>
+<p><strong>2. Call → result:</strong></p>
+<pre><code>{ &quot;op&quot;: &quot;call&quot;, &quot;id&quot;: 7, &quot;method&quot;: &quot;chat.send&quot;, &quot;args&quot;: [&quot;&lt;channel&gt;&quot;, &quot;hello&quot;] }
+{ &quot;op&quot;: &quot;result&quot;, &quot;id&quot;: 7, &quot;ok&quot;: true, &quot;value&quot;: { &quot;id&quot;: &quot;&lt;message&gt;&quot; } }
+{ &quot;op&quot;: &quot;result&quot;, &quot;id&quot;: 7, &quot;ok&quot;: false, &quot;error&quot;: &quot;Bu kanala yazamazsın (plugin bu sunucuya ekli değil).&quot; }</code></pre>
+<div class="tw"><table><thead><tr><th>method</th><th>args</th><th>value</th></tr></thead><tbody><tr><td><code>subscribe</code> / <code>unsubscribe</code></td><td><code>[event]</code> (event names + <code>&quot;ui.action&quot;</code>)</td><td>—</td></tr><tr><td><code>command</code> / <code>uncommand</code></td><td><code>[name]</code></td><td>—</td></tr><tr><td><code>chat.send</code></td><td><code>[channel, text]</code></td><td><code>{ id }</code> or <code>null</code></td></tr><tr><td><code>storage.get</code></td><td><code>[key]</code></td><td>value or <code>null</code></td></tr><tr><td><code>storage.set</code></td><td><code>[key, value]</code></td><td>—</td></tr><tr><td><code>storage.delete</code></td><td><code>[key]</code></td><td>—</td></tr><tr><td><code>storage.keys</code></td><td><code>[prefix]</code></td><td><code>string[]</code></td></tr><tr><td><code>ui.setState</code></td><td><code>[{ gid, cid? }, state, { live? }]</code></td><td>—</td></tr><tr><td><code>voice.join</code> / <code>voice.session</code></td><td><code>[cid]</code></td><td>session state (session: <code>null</code> if none)</td></tr><tr><td><code>voice.call</code></td><td><code>[cid, action, args[]]</code>; action: <code>playUrl playMedia prefetch stop pause resume setVolume leave</code></td><td>session state</td></tr><tr><td><code>log</code></td><td><code>[&quot;info&quot; / &quot;warn&quot; / &quot;error&quot;, message, extra?]</code></td><td>—</td></tr><tr><td><code>guilds</code></td><td><code>[]</code></td><td><code>[{ gid, name }]</code></td></tr><tr><td><code>ping</code></td><td><code>[]</code></td><td><code>&quot;pong&quot;</code></td></tr></tbody></table></div>
+<p>Session state: <code>{ gid, cid, playing, paused, volume, connected }</code>. Error messages are currently in Turkish.</p>
+<p><strong>3. From the server:</strong></p>
+<pre><code>{ &quot;op&quot;: &quot;event&quot;, &quot;name&quot;: &quot;member.join&quot;, &quot;data&quot;: { &quot;gid&quot;: &quot;…&quot;, &quot;uid&quot;: &quot;…&quot; } }
+{ &quot;op&quot;: &quot;event&quot;, &quot;name&quot;: &quot;ui.action&quot;, &quot;data&quot;: { &quot;gid&quot;: &quot;…&quot;, &quot;cid&quot;: &quot;…&quot;, &quot;uid&quot;: &quot;…&quot;, &quot;nick&quot;: &quot;…&quot;, &quot;name&quot;: &quot;…&quot;, &quot;data&quot;: null } }
+{ &quot;op&quot;: &quot;command&quot;, &quot;name&quot;: &quot;dice&quot;, &quot;call&quot;: { &quot;gid&quot;: &quot;…&quot;, &quot;chan&quot;: &quot;…&quot;, &quot;uid&quot;: &quot;…&quot;, &quot;nick&quot;: &quot;…&quot;, &quot;args&quot;: &quot;20&quot;, &quot;m&quot;: { &quot;…&quot;: &quot;…&quot; } } }
+{ &quot;op&quot;: &quot;voice&quot;, &quot;cid&quot;: &quot;…&quot;, &quot;ev&quot;: &quot;started&quot;, &quot;args&quot;: [], &quot;state&quot;: { &quot;…&quot;: &quot;…&quot; } }</code></pre>
+<p><code>voice.ev</code>: <code>started</code>, <code>ended</code>, <code>error</code>, <code>meta</code>, <code>leave</code>. To reply to a command, <code>chat.send</code> to <code>call.chan</code>.</p>
+<p><strong>Close codes:</strong> 4001 invalid / regenerated token · 4002 malformed message · 4003 plugin disabled or deleted · 4004 a new connection with the same token was opened (or the plugin is hosted on Bunker) · 4005 invalid manifest (reason in <code>reason</code>) · 4008 too fast or not reading messages. Reconnect on any other close. Subscriptions and commands are dropped when the connection closes; send them again after reconnecting.</p>
+<hr>
+<h2 id="examples">Examples</h2>
+<ul><li><code>plugins/hello</code>: command, event, storage, message.</li><li><code>plugins/radio</code>: voice (<code>playUrl</code>) + window.</li><li><code>plugins/music</code>: per-channel queue, <code>playMedia</code> + <code>prefetch</code>, window, resuming after a restart (<code>onUnload</code> + storage).</li></ul>
+</main>
+</body>
+</html>

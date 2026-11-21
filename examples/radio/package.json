@@ -1,0 +1,10 @@
+{
+  "name": "@bunker/plugin-radio",
+  "version": "0.1.0",
+  "description": "Örnek plugin: ses kanalında internet radyosu çalar (SDK ses + pencere örneği)",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@bunker-community/plugin-sdk": "*"
+  }
+}

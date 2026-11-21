@@ -1,0 +1,11 @@
+{
+  "name": "Dice Bot",
+  "version": "1.0.0",
+  "description": "Rolls dice: !roll 20",
+  "sdk": "0.1",
+  "permissions": [
+    "events.messages",
+    "chat.send",
+    "storage"
+  ]
+}

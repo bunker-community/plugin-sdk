@@ -1,0 +1,9 @@
+{
+  "id": "hello",
+  "name": "Merhaba Botu",
+  "version": "0.1.0",
+  "description": "Örnek plugin: !merhaba yazana cevap verir ve kaç kez selamlandığını sayar.",
+  "author": "Bunker",
+  "sdk": "0.1",
+  "permissions": ["events.messages", "events.members", "chat.send", "storage"]
+}

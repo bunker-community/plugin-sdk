@@ -1,0 +1,10 @@
+{
+  "name": "@bunker/plugin-music",
+  "version": "0.1.0",
+  "description": "Müzik botu (plugin sürümü): ses kanalında YouTube/SoundCloud/radyo çalar",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@bunker-community/plugin-sdk": "*"
+  }
+}

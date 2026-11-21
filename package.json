@@ -1,0 +1,49 @@
+{
+  "name": "@bunker-community/plugin-sdk",
+  "version": "0.1.4",
+  "description": "SDK for Bunker plugins and bots: types, manifest validation and the remote plugin client (connect).",
+  "keywords": [
+    "bunker",
+    "bot",
+    "plugin",
+    "sdk",
+    "voice",
+    "chat"
+  ],
+  "homepage": "https://bunker.community/app/sdk/en",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bunker-community/plugin-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bunker-community/plugin-sdk/issues"
+  },
+  "license": "MIT",
+  "author": "Bunker",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "API.md",
+    "API.en.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
