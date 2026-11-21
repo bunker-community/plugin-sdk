@@ -140,7 +140,7 @@
     const t = m.ctx?.theme;
     if (t) for (const k of ["bg", "text", "muted", "accent", "border", "hover"]) if (t[k]) document.documentElement.style.setProperty("--" + k, t[k]);
     st = m.state;
-    rx = Date.now();
+    rx = Date.now() - (Number(m.ctx?.age) || 0); // durum eskiyse (pencere yeniden acildi vb.) gecen sureyi say
     render();
     if (!m.state && !asked) { asked = true; act("hello"); }
   });

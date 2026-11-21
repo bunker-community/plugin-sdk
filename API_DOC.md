@@ -432,7 +432,10 @@ Page (`ui.html`):
 | Direction | Message |
 |---|---|
 | page → panel | `{ bunker: "ready" }` · `{ bunker: "action", name, data? }` · `{ bunker: "close" }` |
-| panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, theme: { dark, bg, text, muted, accent, border, hover } } }` |
+| panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, age, theme: { dark, bg, text, muted, accent, border, hover } } }` |
+
+`ctx.age`: how many ms ago the plugin produced this state. The same state may be sent again (e.g. when the window is
+reopened), so a page that shows elapsed time (a progress bar) should add `age` instead of assuming the state is fresh.
 
 Page rules: opens in an isolated frame (no access to the panel's cookies or data); no network requests; a single file
 with inline scripts and styles; images may be `https:` or `data:`; take colors from `ctx.theme`. **Forms don't submit**

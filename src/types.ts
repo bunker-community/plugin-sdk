@@ -229,7 +229,8 @@ export interface UiAction {
 /**
  * Pencere sayfasiyla konusma (window.postMessage):
  *   sayfa -> panel: { bunker: "ready" } | { bunker: "action", name, data } | { bunker: "close" }
- *   panel -> sayfa: { bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, theme: { dark, bg, text, muted, accent, border, hover } } }
+ *   panel -> sayfa: { bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, age, theme: { dark, bg, text, muted, accent, border, hover } } }
+ *   age: durum kac ms once uretildi (ayni durum tekrar gonderilebilir; sure/ilerleme sayan sayfa bunu ekler)
  * Sayfa ag istegi yapamaz (CSP); her sey durum + islemlerle olur.
  */
 export type UiPageMessage = { bunker: "ready" } | { bunker: "action"; name: string; data?: unknown } | { bunker: "close" };
