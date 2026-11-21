@@ -1,6 +1,6 @@
 # Bunker Plugin Developer Guide and API Reference
 
-SDK `@bunker-community/plugin-sdk` 0.1.4 · [Türkçe](API.md)
+SDK `@bunker-community/plugin-sdk` 0.1.4
 
 This document is for people who want to write plugins (bots) for Bunker: what is required, how to upload, and which
 functions are available.

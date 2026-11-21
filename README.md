@@ -5,7 +5,7 @@
 Write bots and plugins for [Bunker](https://bunker.community): commands, events, storage, voice (music/radio) and a
 window in the Bunker panel. Write a file, upload it in Bunker, it runs.
 
-**Developer guide and API reference:** [English](API.en.md) · [Türkçe](API.md) · [web](https://bunker.community/app/sdk/en) · PDF ([EN](docs/bunker-plugin-api-en.pdf), [TR](docs/bunker-plugin-api.pdf))
+**Developer guide and API reference:** [API_DOC.md](API_DOC.md) · [web](https://bunker.community/app/sdk/) · [PDF](docs/bunker-plugin-api.pdf)
 
 ## Quick start
 

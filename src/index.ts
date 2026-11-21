@@ -9,7 +9,7 @@
  *   });
  *
  * Plugin klasoru: bunker-plugin.json (manifest) + giris dosyasi (varsayilan src/index.ts).
- * Uzak plugin (kendi bilgisayarinda calisir): connect(plugin, { token }) — bkz. remote.ts, API.md.
+ * Uzak plugin (kendi bilgisayarinda calisir): connect(plugin, { token }) — bkz. remote.ts, API_DOC.md.
  */
 import type { PluginDefinition } from "./types.ts";
 
