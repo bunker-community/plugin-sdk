@@ -1,7 +1,8 @@
 # Changelog
 
 ## 0.1.4
-- Remote plugins: `connect(plugin, { token })` over the Bunker gateway; hosting on Bunker after review.
+- Upload plugins to Bunker (they run in a restricted environment on your servers right away; Store needs review).
+- `connect(plugin, { token })` to run a plugin from your own computer.
 
 ## 0.1.3
 - `VoiceSession.playMedia`, `prefetch`, `meta` event, `error` with `{ silent }`.

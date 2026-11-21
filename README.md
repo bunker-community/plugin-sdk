@@ -2,39 +2,38 @@
 
 [![npm](https://img.shields.io/npm/v/@bunker-community/plugin-sdk)](https://www.npmjs.com/package/@bunker-community/plugin-sdk)
 
-Write bots and plugins for [Bunker](https://bunker.community): commands, events, storage, voice (music/radio) and
-a window in the Bunker panel. Your code runs on your own computer or server and connects with a token; or Bunker
-hosts it after review.
+Write bots and plugins for [Bunker](https://bunker.community): commands, events, storage, voice (music/radio) and a
+window in the Bunker panel. Write a file, upload it in Bunker, it runs.
 
-**Docs:** [English](API.en.md) · [Türkçe](API.md) · [web](https://bunker.community/app/sdk/en) · PDF ([EN](docs/bunker-plugin-api-en.pdf), [TR](docs/bunker-plugin-api.pdf))
+**Developer guide and API reference:** [English](API.en.md) · [Türkçe](API.md) · [web](https://bunker.community/app/sdk/en) · PDF ([EN](docs/bunker-plugin-api-en.pdf), [TR](docs/bunker-plugin-api.pdf))
 
 ## Quick start
 
-1. In Bunker: **Settings → Developer → New plugin**, copy the token.
-2. Install (Node.js 22+):
-
-```bash
-npm install @bunker-community/plugin-sdk
+`bunker-plugin.json`
+```json
+{ "name": "Dice Bot", "version": "1.0.0", "sdk": "0.1", "permissions": ["events.messages", "chat.send"] }
 ```
 
-3. `index.js` (with `"type": "module"` in package.json):
-
+`plugin.js`
 ```js
-import { connect, definePlugin } from "@bunker-community/plugin-sdk";
+import { definePlugin } from "@bunker-community/plugin-sdk";
 
-const plugin = definePlugin({
+export default definePlugin({
   setup(ctx) {
-    ctx.command("hello", (c) => c.reply(`Hello ${c.nick}!`));
+    ctx.command("roll", (c) => c.reply(`${c.nick} rolled ${1 + Math.floor(Math.random() * 6)}`));
   },
 });
-
-connect(plugin, { token: process.env.BUNKER_TOKEN });
 ```
 
-4. Add a `bunker-plugin.json` (name, version, `"sdk": "0.1"`, permissions) next to it, run
-   `BUNKER_TOKEN=<token> node index.js`, then add the plugin to your server from Server settings → Plugins.
+1. In Bunker: **Settings → Developer → New plugin**.
+2. **Upload code**: select `plugin.js` and `bunker-plugin.json`, then **Run on Bunker**.
+3. Add it to your server (Server settings → Plugins) and type `!roll`.
 
-See [examples/](examples): `remote-dice` (remote plugin), `hello`, `radio`, `music` (built-in plugins, same API).
+Plugins run in a restricted environment (no internet or file access, single file, only this SDK). To test from your
+own computer instead, install the SDK (`npm install @bunker-community/plugin-sdk`) and use `connect(plugin, { token })`;
+see the guide.
+
+Examples: [examples/dice](examples/dice) (start here), `hello`, `radio`, `music` (Bunker's own plugins, same API).
 
 ## License
 
