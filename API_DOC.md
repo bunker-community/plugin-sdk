@@ -435,7 +435,9 @@ Page (`ui.html`):
 | panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, theme: { dark, bg, text, muted, accent, border, hover } } }` |
 
 Page rules: opens in an isolated frame (no access to the panel's cookies or data); no network requests; a single file
-with inline scripts and styles; images may be `https:` or `data:`; take colors from `ctx.theme`.
+with inline scripts and styles; images may be `https:` or `data:`; take colors from `ctx.theme`. **Forms don't submit**
+in the isolated frame (the `submit` event never fires): don't rely on `<form onsubmit>`; handle the button's `click` and
+the input's `keydown` (Enter) yourself.
 
 ---
 

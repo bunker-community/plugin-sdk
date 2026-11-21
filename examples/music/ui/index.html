@@ -33,7 +33,7 @@
   .vol input { width: 110px; accent-color: var(--accent); }
   .vol span { width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
   .notice { margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(240,178,50,.12); color: #f0b232; font-size: 12px; }
-  form { display: flex; gap: 8px; margin: 14px 0 4px; }
+  .row { display: flex; gap: 8px; margin: 14px 0 4px; }
   input[type=text] { flex: 1; min-width: 0; height: 34px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); padding: 0 10px; font: inherit; }
   input[type=text]:focus { outline: none; border-color: var(--accent); }
   .hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
@@ -65,7 +65,7 @@
     <label class="vol"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg><input type="range" id="vol" min="0" max="100"><span id="volv"></span></label>
   </div>
   <div class="notice" id="notice" hidden></div>
-  <form id="f"><input type="text" id="q" maxlength="500" placeholder="Şarkı adı ya da YouTube / SoundCloud bağlantısı" autocomplete="off" required><button class="primary" id="add">Çal</button></form>
+  <div class="row" id="f"><input type="text" id="q" maxlength="500" placeholder="Şarkı adı ya da YouTube / SoundCloud bağlantısı" autocomplete="off"><button type="button" class="primary" id="add">Çal</button></div>
   <p class="hint">Şarkı adı yazarsan aranır. Her ses kanalının kendi botu var.</p>
   <div class="qhead"><h4 id="qtitle">Sıra</h4><button class="link" id="clear" hidden>Temizle</button></div>
   <div id="queue"><div class="empty">Sıra boş.</div></div>
@@ -144,7 +144,10 @@
     render();
     if (!m.state && !asked) { asked = true; act("hello"); }
   });
-  $("f").onsubmit = (e) => { e.preventDefault(); const v = $("q").value.trim(); if (v) act("add", { q: v }); $("q").value = ""; };
+  // Izole cercevede form gonderme kapali (submit olayi hic gelmez): tiklama + Enter
+  const add = () => { const v = $("q").value.trim(); if (v) act("add", { q: v }); $("q").value = ""; };
+  $("add").onclick = add;
+  $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
   $("pp").onclick = () => act(st?.paused ? "resume" : "pause");
   $("skip").onclick = () => act("skip");
   $("stop").onclick = () => act("stop");
