@@ -158,6 +158,8 @@ export interface CommandCall {
   /** Komuttan sonraki metin (bosluklar kirpilmis) */
   args: string;
   m: PluginMessage;
+  /** Yazanin bu sunucuda sunucu ayarlari yetkisi var mi (server.manage / yonetici) */
+  manage: boolean;
   /** Ayni kanala plugin adiyla cevap (chat.send izni gerekir) */
   reply(text: string): Promise<void>;
 }
@@ -225,12 +227,16 @@ export interface UiAction {
   nick: string;
   name: string;
   data: unknown;
+  /** Islemi yapanin bu sunucuda sunucu ayarlari yetkisi var mi */
+  manage: boolean;
 }
 /**
  * Pencere sayfasiyla konusma (window.postMessage):
  *   sayfa -> panel: { bunker: "ready" } | { bunker: "action", name, data } | { bunker: "close" }
- *   panel -> sayfa: { bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, age, theme: { dark, bg, text, muted, accent, border, hover } } }
+ *   panel -> sayfa: { bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, manage, age, theme: { dark, bg, text, muted, accent, border, hover } } }
+ *                 | { bunker: "message", data }   (ctx.ui.send ile sadece bu kisiye)
  *   age: durum kac ms once uretildi (ayni durum tekrar gonderilebilir; sure/ilerleme sayan sayfa bunu ekler)
+ *   manage: bakan kisinin sunucu ayarlari yetkisi var mi (sadece gosterim icin; asil denetim UiAction.manage)
  * Sayfa ag istegi yapamaz (CSP); her sey durum + islemlerle olur.
  */
 export type UiPageMessage = { bunker: "ready" } | { bunker: "action"; name: string; data?: unknown } | { bunker: "close" };
@@ -252,6 +258,8 @@ export interface PluginContext {
     join(cid: string): Promise<VoiceSession>;
     /** Acik oturum (yoksa null) */
     session(cid: string): VoiceSession | null;
+    /** Kisinin su an bulundugu ses kanali (voice.speak ya da events.voice). Plugin'in ekli olmadigi sunucudaysa null. */
+    channelOf(uid: string): Promise<{ gid: string; cid: string } | null>;
   };
   readonly ui: {
     /**
@@ -261,6 +269,11 @@ export interface PluginContext {
     setState(where: { gid: string; cid?: string }, state: unknown, opts?: { live?: boolean }): void;
     /** Pencerede yapilan islem */
     onAction(fn: (a: UiAction) => Awaitable<void>): () => void;
+    /**
+     * Sadece bir kisinin acik penceresine veri (sayfaya { bunker: "message", data } olarak gider): ornegin bir islemin
+     * cevabi. JSON, en fazla 128 KB. Kisinin o pencereyi acmamissa kaybolur.
+     */
+    send(uid: string, where: { gid: string; cid?: string }, data: unknown): void;
   };
   /** Plugin kapanirken calisacak temizlik */
   onUnload(fn: () => Awaitable<void>): void;

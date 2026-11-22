@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.5
+- `ctx.voice.channelOf(uid)`, `ctx.ui.send(uid, where, data)` (data to one user's window: `{ bunker: "message", data }`).
+- `manage` in `CommandCall`, `UiAction` and the window page `ctx`.
+- `chat.send` limit is now per server (10 messages per 10 s).
+
 ## 0.1.4
 - Upload plugins to Bunker (they run in a restricted environment on your servers right away; Store needs review).
 - `connect(plugin, { token })` to run a plugin from your own computer.

@@ -1,6 +1,6 @@
 # Bunker Plugin Developer Guide and API Reference
 
-SDK `@bunker-community/plugin-sdk` 0.1.4
+SDK `@bunker-community/plugin-sdk` 0.1.5
 
 This document is for people who want to write plugins (bots) for Bunker: what is required, how to upload, and which
 functions are available.
@@ -254,7 +254,8 @@ Returns the definition as is (a typing helper). This is the code file's `export 
 | `ctx.chat.send(channel, text)` | `chat.send` | Message to a text channel. |
 | `ctx.storage` | `storage` | Persistent key-value storage. |
 | `ctx.voice.join(cid)` / `ctx.voice.session(cid)` | `voice.speak` | Voice channel session. |
-| `ctx.ui.setState(...)` / `ctx.ui.onAction(fn)` | — (manifest `ui`) | Panel window. |
+| `ctx.voice.channelOf(uid)` | `voice.speak` or `events.voice` | Which voice channel a user is in: `Promise<{ gid, cid } \| null>` (null if not in a voice channel of a server you were added to). |
+| `ctx.ui.setState(...)` / `ctx.ui.onAction(fn)` / `ctx.ui.send(...)` | — (manifest `ui`) | Panel window. |
 | `ctx.onUnload(fn)` | — | Cleanup on shutdown. |
 
 Event data is a copy; changing it doesn't affect Bunker.
@@ -308,6 +309,7 @@ interface CommandCall {
   gid: string; chan: string; uid: string; nick: string;
   args: string;                       // text after the command
   m: PluginMessage;
+  manage: boolean;                    // the writer has server settings permission on this server
   reply(text: string): Promise<void>; // to the same channel (needs chat.send)
 }
 ```
@@ -318,7 +320,7 @@ interface CommandCall {
 const r = await ctx.chat.send(chanId, "Hello!"); // { id } | null
 ```
 Only to text channels of servers you were added to; shown under the bot's name with a BOT tag. At most 10 messages
-per 10 s. Text at most 1800 characters (longer is cut). Mentions: `<@uid>`.
+per 10 s per server. Text at most 1800 characters (longer is cut). Mentions: `<@uid>`.
 
 ### Storage: `ctx.storage`
 
@@ -397,7 +399,7 @@ plugin ◀── ctx.ui.onAction ── panel ◀── {bunker:"action"} ──
 | Function | Description |
 |---|---|
 | `ctx.ui.setState({ gid, cid? }, state, { live? })` | Sends the state to everyone on that server (in that channel for scope `voice`); people opening it later get the latest state too. JSON, ≤32 KB. `live: true` → the icon lights up. `null` → clear. Kept in memory. |
-| `ctx.ui.onAction(fn)` | `fn({ gid, cid?, uid, nick, name, data })`. Bunker checks the user is a member (and in the channel for scope `voice`); ≤10 per second per user, `data` ≤4 KB. Still validate `data`. |
+| `ctx.ui.onAction(fn)` | `fn({ gid, cid?, uid, nick, name, data, manage })` (`manage`: the user has server settings permission). Bunker checks the user is a member (and in the channel for scope `voice`); ≤10 per second per user, `data` ≤4 KB. Still validate `data`. |
 
 ```js
 ctx.ui.onAction(async (a) => {
@@ -432,7 +434,11 @@ Page (`ui.html`):
 | Direction | Message |
 |---|---|
 | page → panel | `{ bunker: "ready" }` · `{ bunker: "action", name, data? }` · `{ bunker: "close" }` |
-| panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, age, theme: { dark, bg, text, muted, accent, border, hover } } }` |
+| panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, manage, age, theme: { dark, bg, text, muted, accent, border, hover } } }` |
+
+Plus `{ bunker: "message", data }`: data sent only to this user with `ctx.ui.send(uid, { gid, cid? }, data)` (e.g. the
+result of an action, or an error). `ctx.manage`: whether the viewer has server settings permission (for showing
+buttons only; check `UiAction.manage` in the plugin).
 
 `ctx.age`: how many ms ago the plugin produced this state. The same state may be sent again (e.g. when the window is
 reopened), so a page that shows elapsed time (a progress bar) should add `age` instead of assuming the state is fresh.
@@ -471,7 +477,7 @@ one is approved. Abusive plugins are disabled.
 | Plugins per person | 5 |
 | Plugins per server | 25 |
 | Error budget | 10 errors in 60 s → plugin stops |
-| `chat.send` | 10 messages per 10 s, ≤1800 characters |
+| `chat.send` | 10 messages per 10 s per server, ≤1800 characters |
 | Storage | value ≤64 KB, ≤10,000 keys, key ≤200 characters |
 | Window | state ≤32 KB; actions 10 per second per user, `data` ≤4 KB |
 | Voice | 12 sessions across Bunker |
@@ -483,7 +489,7 @@ Common errors (messages are currently in Turkish):
 |---|---|
 | `… için "X" izni gerekli` | Permission X is missing from the manifest. |
 | `Bu kanala yazamazsın (plugin bu sunucuya ekli değil).` | The channel is on a server the plugin wasn't added to. |
-| `Çok hızlı: 10 sn'de en fazla 10 mesaj` | Message limit. |
+| `Çok hızlı: bir sunucuya 10 sn'de en fazla 10 mesaj` | Message limit (per server). |
 | `!x Bunker'ın kendi komutu, alınamaz` / `başka bir plugin'de kayıtlı` | Command name taken; pick another. |
 | `değer en fazla 64 KB` / `durum en fazla 32 KB` | Value / state too large; split it. |
 | `plugin kapalı` | The old `ctx` was used after the plugin stopped (stop timers in `onUnload`). |
@@ -516,8 +522,8 @@ message, ~30 calls per second.
 
 **Hello** (first message, within 10 s) and reply:
 ```json
-{ "op": "hello", "token": "ext-…", "sdk": "0.1.4", "manifest": { "name": "…", "version": "1.0.0", "sdk": "0.1", "permissions": [] }, "uiPage": "<!doctype html>…" }
-{ "op": "ready", "v": 1, "sdk": "0.1.4", "manifest": { "…": "…" }, "guilds": [{ "gid": "…", "name": "…" }] }
+{ "op": "hello", "token": "ext-…", "sdk": "0.1.5", "manifest": { "name": "…", "version": "1.0.0", "sdk": "0.1", "permissions": [] }, "uiPage": "<!doctype html>…" }
+{ "op": "ready", "v": 1, "sdk": "0.1.5", "manifest": { "…": "…" }, "guilds": [{ "gid": "…", "name": "…" }] }
 ```
 
 **Call → result:**
@@ -537,6 +543,8 @@ message, ~30 calls per second.
 | `storage.keys` | `[prefix]` | `string[]` |
 | `ui.setState` | `[{ gid, cid? }, state, { live? }]` | — |
 | `voice.join` / `voice.session` | `[cid]` | session state |
+| `voice.channelOf` | `[uid]` | `{ gid, cid }` or `null` |
+| `ui.send` | `[uid, { gid, cid? }, data]` | — |
 | `voice.call` | `[cid, action, args[]]` (`playUrl playMedia prefetch stop pause resume setVolume leave`) | session state |
 | `log` | `["info" / "warn" / "error", message, extra?]` | — |
 | `guilds` | `[]` | `[{ gid, name }]` |
@@ -564,6 +572,7 @@ another connection with the same token, or the plugin is running on Bunker · 40
 
 | Version | Change |
 |---|---|
+| 0.1.5 | `ctx.voice.channelOf`, `ctx.ui.send` (data to one user's window), `manage` in `CommandCall` / `UiAction` / page `ctx` |
 | 0.1.4 | Uploading plugins to Bunker (hosting), connecting from your computer (`connect`) |
 | 0.1.3 | `playMedia`, `prefetch`, `meta` event, `silent` in the `error` event |
 | 0.1.2 | Voice (`voice.speak`) and panel window (`ui`) |

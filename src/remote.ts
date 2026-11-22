@@ -159,12 +159,14 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
     voice: {
       async join(cid: string) { return sessionFor(await call<SessionState>("voice.join", cid)); },
       session(cid: string) { return sessions.get(cid) ?? null; },
+      channelOf: (uid: string) => call<{ gid: string; cid: string } | null>("voice.channelOf", uid),
     },
     ui: {
       setState: (where, state, o) => fire("ui.setState", where, state, o ?? {}),
       onAction(fn: (a: UiAction) => unknown) {
         return ctx.on("ui.action" as PluginEventName, fn as never);
       },
+      send: (uid, where, data) => fire("ui.send", uid, where, data),
     },
     onUnload(fn) { unloaders.push(fn); },
   };

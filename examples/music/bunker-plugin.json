@@ -1,10 +1,20 @@
 {
   "id": "music",
   "name": "Müzik Botu",
-  "version": "0.1.0",
-  "description": "Ses kanalında YouTube, SoundCloud ya da radyo çalar: sıra, duraklat, atla, ses ayarı. Sol alttaki plugin'lerden açılır.",
+  "version": "1.0.0",
+  "description": "Ses kanalında YouTube, SoundCloud ve radyo çalar: sıra, çalma listeleri (TR Mix, EDM ve kendi listeleriniz), sohbet komutları (!play, !liste, !skip…). Sol alttaki müzik ikonundan açılır.",
   "author": "Bunker",
   "sdk": "0.1",
-  "permissions": ["voice.speak", "storage"],
-  "ui": { "title": "Müzik", "icon": "music", "page": "ui/index.html", "scope": "voice" }
+  "permissions": [
+    "voice.speak",
+    "storage",
+    "events.messages",
+    "chat.send"
+  ],
+  "ui": {
+    "title": "Müzik",
+    "icon": "music",
+    "page": "ui/index.html",
+    "scope": "voice"
+  }
 }

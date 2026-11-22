@@ -50,6 +50,17 @@
   .item button { height: 24px; width: 24px; padding: 0; background: none; color: var(--muted); visibility: hidden; }
   .item:hover button { visibility: visible; }
   .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+  .sec { margin-top: 18px; }
+  .item .acts { display: flex; gap: 4px; visibility: hidden; }
+  .item:hover .acts { visibility: visible; }
+  .item .acts button { width: auto; padding: 0 8px; visibility: visible; }
+  .item .play { color: var(--accent); }
+  .err { margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(242,63,67,.12); color: #f23f43; font-size: 12px; }
+  .editor { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .editor textarea { min-height: 180px; resize: vertical; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); padding: 8px 10px; font: 13px/1.45 inherit; }
+  .editor textarea:focus { outline: none; border-color: var(--accent); }
+  .editor .bt { display: flex; gap: 8px; align-items: center; }
+  .editor .bt span { color: var(--muted); font-size: 12px; margin-right: auto; }
 </style>
 </head>
 <body>
@@ -69,6 +80,16 @@
   <p class="hint">Şarkı adı yazarsan aranır. Her ses kanalının kendi botu var.</p>
   <div class="qhead"><h4 id="qtitle">Sıra</h4><button class="link" id="clear" hidden>Temizle</button></div>
   <div id="queue"><div class="empty">Sıra boş.</div></div>
+  <div class="err" id="err" hidden></div>
+  <div class="sec">
+    <div class="qhead"><h4>Çalma listeleri</h4><button class="link" id="newlist">+ Yeni liste</button></div>
+    <div id="lists"><div class="empty">Liste yok.</div></div>
+    <div class="editor" id="editor" hidden>
+      <input type="text" id="plname" maxlength="40" placeholder="Liste adı (ör. Akşam listesi)" autocomplete="off">
+      <textarea id="plsongs" spellcheck="false" placeholder="Her satıra bir şarkı adı ya da bağlantı:&#10;Tarkan - Şımarık&#10;https://www.youtube.com/watch?v=…"></textarea>
+      <div class="bt"><span id="plcount">0 şarkı</span><button type="button" id="plcancel">Vazgeç</button><button type="button" class="primary" id="plsave">Kaydet</button></div>
+    </div>
+  </div>
 <script>
   // Bunker plugin penceresi: durum panelden ({bunker:"state"}), islemler panele ({bunker:"action"})
   const $ = (id) => document.getElementById(id);
@@ -83,7 +104,7 @@
   $("skip").innerHTML = ICON.skip;
   $("stop").innerHTML = ICON.stop;
   const mmss = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
-  let st = null, rx = 0, volTimer = 0, dragging = false, asked = false;
+  let st = null, rx = 0, volTimer = 0, dragging = false, asked = false, me = null, manage = false, editing = null, errTimer = 0;
 
   function tick() {
     const n = st?.now;
@@ -131,12 +152,66 @@
       row.append(num, tx, x);
       box.append(row);
     });
+    renderLists();
     tick();
+  }
+
+  // ---- calma listeleri
+  function renderLists() {
+    const box = $("lists");
+    const ls = st?.lists ?? [];
+    box.replaceChildren();
+    if (!ls.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Liste yok. Sık dinlediğiniz şarkıları bir listeye toplayabilirsin."; box.append(e); return; }
+    for (const p of ls) {
+      const row = document.createElement("div");
+      row.className = "item";
+      const tx = document.createElement("div");
+      const b = document.createElement("b"); b.textContent = p.name;
+      const sm = document.createElement("small"); sm.textContent = p.count + " şarkı";
+      tx.append(b, sm);
+      const acts = document.createElement("div"); acts.className = "acts";
+      const play = document.createElement("button"); play.className = "play"; play.textContent = "Çal"; play.title = "Listeden karışık 20 şarkı sıraya";
+      play.onclick = () => act("pl.play", { id: p.id });
+      acts.append(play);
+      if (p.by === me?.uid || manage) {
+        const ed = document.createElement("button"); ed.textContent = "Düzenle"; ed.onclick = () => act("pl.get", { id: p.id });
+        const del = document.createElement("button"); del.textContent = "Sil";
+        del.onclick = () => { if (del.dataset.armed) return act("pl.delete", { id: p.id }); del.dataset.armed = "1"; del.textContent = "Silinsin mi?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Sil"; }, 3000); };
+        acts.append(ed, del);
+      }
+      row.append(tx, acts);
+      box.append(row);
+    }
+  }
+  function openEditor(pl) {
+    editing = pl?.id ?? null;
+    $("plname").value = pl?.name ?? "";
+    $("plsongs").value = (pl?.songs ?? []).join("\n");
+    recount();
+    $("editor").hidden = false;
+    $("plname").focus();
+  }
+  const closeEditor = () => { editing = null; $("editor").hidden = true; };
+  const recount = () => { $("plcount").textContent = $("plsongs").value.split("\n").map((x) => x.trim()).filter(Boolean).length + " şarkı"; };
+  function showErr(text) {
+    $("err").textContent = text; $("err").hidden = false;
+    clearTimeout(errTimer); errTimer = setTimeout(() => { $("err").hidden = true; }, 8000);
   }
 
   window.addEventListener("message", (e) => {
     const m = e.data;
-    if (e.source !== parent || !m || m.bunker !== "state") return;
+    if (e.source !== parent || !m) return;
+    if (m.bunker === "message") {
+      // sadece bana: liste icerigi, kayit sonucu, hata
+      const d = m.data || {};
+      if (d.type === "pl") openEditor(d.pl);
+      else if (d.type === "saved") closeEditor();
+      else if (d.type === "error") showErr(d.text);
+      return;
+    }
+    if (m.bunker !== "state") return;
+    me = m.ctx?.me ?? null;
+    manage = Boolean(m.ctx?.manage);
     const t = m.ctx?.theme;
     if (t) for (const k of ["bg", "text", "muted", "accent", "border", "hover"]) if (t[k]) document.documentElement.style.setProperty("--" + k, t[k]);
     st = m.state;
@@ -157,6 +232,14 @@
     $("volv").textContent = "%" + $("vol").value;
     clearTimeout(volTimer);
     volTimer = setTimeout(() => { act("volume", { v: Number($("vol").value) }); dragging = false; }, 150);
+  };
+  $("newlist").onclick = () => openEditor(null);
+  $("plcancel").onclick = closeEditor;
+  $("plsongs").addEventListener("input", recount);
+  $("plsave").onclick = () => {
+    const name = $("plname").value.trim();
+    if (!name) return $("plname").focus();
+    act("pl.save", { id: editing || undefined, name, songs: $("plsongs").value.split("\n") });
   };
   parent.postMessage({ bunker: "ready" }, "*");
   $("q").focus();
