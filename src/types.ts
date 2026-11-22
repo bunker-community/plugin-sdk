@@ -64,7 +64,10 @@ export interface PluginManifest {
   name: string;
   /** Plugin surumu (x.y.z) */
   version: string;
+  /** Short description (at most 300 characters), shown on Store cards. */
   description?: string;
+  /** Long description (at most 4000 characters, plain text; blank lines start a new paragraph), shown in the Store detail view. */
+  details?: string;
   author?: string;
   /** Sunucu tarafi giris dosyasi (plugin klasorune gore), varsayilan "src/index.ts" */
   main?: string;

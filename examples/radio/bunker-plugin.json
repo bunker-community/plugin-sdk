@@ -3,8 +3,17 @@
   "name": "Radyo",
   "version": "0.1.0",
   "description": "Ses kanalında internet radyosu ya da bir ses bağlantısı çalar. Sol alttaki plugin'lerden açılır.",
+  "details": "Ses kanalında internet radyosu çalar. Radyonun yayın adresini (mp3 ya da aac akışı) ya da bir ses dosyasının bağlantısını yapıştırırsın, bot kanala girip yayını çalar.\n\nPencere: ses kanalındayken sol alttaki radyo ikonuna tıkla. Duraklatabilir, kapatabilir, sesi ayarlayabilir, son çalınan yayınlara tek tıkla dönebilirsin. Son çalınanlar sunucu başına saklanır.\n\nKanalda kimse kalmayınca bot bir dakika sonra kendiliğinden çıkar.",
   "author": "Bunker",
   "sdk": "0.1",
-  "permissions": ["voice.speak", "storage"],
-  "ui": { "title": "Radyo", "icon": "radio", "page": "ui/index.html", "scope": "voice" }
+  "permissions": [
+    "voice.speak",
+    "storage"
+  ],
+  "ui": {
+    "title": "Radyo",
+    "icon": "radio",
+    "page": "ui/index.html",
+    "scope": "voice"
+  }
 }

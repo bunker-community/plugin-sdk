@@ -1,6 +1,6 @@
 {
   "name": "@bunker-community/plugin-sdk",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "SDK for Bunker plugins and bots: types, manifest validation and the remote plugin client (connect).",
   "keywords": [
     "bunker",

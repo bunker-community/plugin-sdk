@@ -32,7 +32,8 @@ table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; vertical-align: top; padding: 7px 10px; border: 1px solid var(--line); }
 th { background: var(--soft); font-weight: 600; }
 blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--accent); background: var(--soft); color: var(--muted); }
-@media (max-width: 640px) { main { padding: 16px; } header { padding: 10px 16px; } h1 { font-size: 24px; } }
+@media (max-width: 640px) { main { padding: 16px; } header { padding: 10px 16px; gap: 6px; } h1 { font-size: 24px; } }
+@media (max-width: 380px) { header .muted { display: none; } header a { padding: 4px 6px; } }
 @media print {
   header { display: none; }
   main { max-width: none; padding: 0; }
@@ -45,11 +46,11 @@ blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--acc
 </style>
 </head>
 <body>
-<header><b>Bunker Plugin SDK</b><span class="muted">0.1.5</span><span class="sp"></span>
+<header><b>Bunker Plugin SDK</b><span class="muted">0.1.6</span><span class="sp"></span>
 <a href="bunker-plugin-api.pdf">PDF</a></header>
 <main>
 <h1 id="bunker-plugin-developer-guide-and-api-reference">Bunker Plugin Developer Guide and API Reference</h1>
-<p>SDK <code>@bunker-community/plugin-sdk</code> 0.1.5</p>
+<p>SDK <code>@bunker-community/plugin-sdk</code> 0.1.6</p>
 <p>This document is for people who want to write plugins (bots) for Bunker: what is required, how to upload, and which functions are available.</p>
 <h2 id="contents">Contents</h2>
 <ol><li><a href="#what-a-plugin-is-and-how-it-runs">What a plugin is and how it runs</a></li><li><a href="#requirements">Requirements</a></li><li><a href="#your-first-plugin-write-upload-run">Your first plugin: write, upload, run</a></li><li><a href="#testing-while-developing-connecting-from-your-computer">Testing while developing: connecting from your computer</a></li><li><a href="#lifecycle">Lifecycle</a></li><li><a href="#api-reference">API reference</a></li><li><a href="#publishing-to-the-store">Publishing to the Store</a></li><li><a href="#limits-and-error-messages">Limits and error messages</a></li><li><a href="#faq">FAQ</a></li><li><a href="#appendix-a-gateway-protocol-other-languages">Appendix A: Gateway protocol (other languages)</a></li><li><a href="#appendix-b-versions">Appendix B: Versions</a></li></ol>
@@ -73,7 +74,7 @@ blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--acc
   &quot;sdk&quot;: &quot;0.1&quot;,
   &quot;permissions&quot;: [&quot;events.messages&quot;, &quot;chat.send&quot;]
 }</code></pre>
-<div class="tw"><table><thead><tr><th>Field</th><th>Required</th><th>Rule</th></tr></thead><tbody><tr><td><code>name</code></td><td>yes</td><td>Display name, at most 40 characters. The bot's name in messages (server admins can rename it on their server).</td></tr><tr><td><code>version</code></td><td>yes</td><td><code>x.y.z</code> (e.g. <code>1.0.0</code>, <code>1.2.0-beta.1</code>).</td></tr><tr><td><code>sdk</code></td><td>yes</td><td><code>&quot;0.1&quot;</code>.</td></tr><tr><td><code>permissions</code></td><td>yes</td><td>List of permissions; <code>[]</code> if you need none.</td></tr><tr><td><code>description</code></td><td>no</td><td>At most 300 characters; shown in the Store and server settings.</td></tr><tr><td><code>author</code></td><td>no</td><td>At most 80 characters.</td></tr><tr><td><code>ui</code></td><td>no</td><td>Panel window (<a href="#window-ctxui">Window</a>).</td></tr><tr><td><code>id</code></td><td>—</td><td>Don't set it: the plugin id (<code>ext-xxxxxxxx</code>) is assigned when you create the plugin on Bunker.</td></tr></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Field</th><th>Required</th><th>Rule</th></tr></thead><tbody><tr><td><code>name</code></td><td>yes</td><td>Display name, at most 40 characters. The bot's name in messages (server admins can rename it on their server).</td></tr><tr><td><code>version</code></td><td>yes</td><td><code>x.y.z</code> (e.g. <code>1.0.0</code>, <code>1.2.0-beta.1</code>).</td></tr><tr><td><code>sdk</code></td><td>yes</td><td><code>&quot;0.1&quot;</code>.</td></tr><tr><td><code>permissions</code></td><td>yes</td><td>List of permissions; <code>[]</code> if you need none.</td></tr><tr><td><code>description</code></td><td>no</td><td>At most 300 characters; shown on Store cards and in server settings.</td></tr><tr><td><code>details</code></td><td>no</td><td>Long description, at most 4000 characters of plain text (a blank line starts a new paragraph). Shown when someone opens your plugin in the Store: what it does, how to use it, its commands.</td></tr><tr><td><code>author</code></td><td>no</td><td>At most 80 characters.</td></tr><tr><td><code>ui</code></td><td>no</td><td>Panel window (<a href="#window-ctxui">Window</a>).</td></tr><tr><td><code>id</code></td><td>—</td><td>Don't set it: the plugin id (<code>ext-xxxxxxxx</code>) is assigned when you create the plugin on Bunker.</td></tr></tbody></table></div>
 <h3 id="code">Code</h3>
 <ul><li><strong>A single file.</strong> You can't import other files; bundle the libraries you use into one file (<a href="#your-first-plugin-write-upload-run">First plugin</a>, step 2).</li><li>The file must <code>export default definePlugin({ setup(ctx) { … } })</code>.</li><li>The only external import: <code>@bunker-community/plugin-sdk</code>.</li><li><strong>Don't</strong> call <code>connect()</code>; Bunker connects the plugin (connect is only for <a href="#testing-while-developing-connecting-from-your-computer">testing on your computer</a>).</li></ul>
 <h3 id="what-the-environment-forbids">What the environment forbids</h3>
@@ -247,8 +248,8 @@ plugin ◀── ctx.ui.onAction ── panel ◀── {bunker:&quot;action&quo
 <h2 id="appendix-a-gateway-protocol-other-languages">Appendix A: Gateway protocol (other languages)</h2>
 <p>The SDK is for Node.js. To write a bot in another language (Python, Go…) that runs on your own machine, connect to the gateway directly: WebSocket <code>wss://bunker.community/app/api/plugin/gateway</code>, JSON text messages, ≤320 KB per message, ~30 calls per second.</p>
 <p><strong>Hello</strong> (first message, within 10 s) and reply:</p>
-<pre><code>{ &quot;op&quot;: &quot;hello&quot;, &quot;token&quot;: &quot;ext-…&quot;, &quot;sdk&quot;: &quot;0.1.5&quot;, &quot;manifest&quot;: { &quot;name&quot;: &quot;…&quot;, &quot;version&quot;: &quot;1.0.0&quot;, &quot;sdk&quot;: &quot;0.1&quot;, &quot;permissions&quot;: [] }, &quot;uiPage&quot;: &quot;&lt;!doctype html&gt;…&quot; }
-{ &quot;op&quot;: &quot;ready&quot;, &quot;v&quot;: 1, &quot;sdk&quot;: &quot;0.1.5&quot;, &quot;manifest&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;guilds&quot;: [{ &quot;gid&quot;: &quot;…&quot;, &quot;name&quot;: &quot;…&quot; }] }</code></pre>
+<pre><code>{ &quot;op&quot;: &quot;hello&quot;, &quot;token&quot;: &quot;ext-…&quot;, &quot;sdk&quot;: &quot;0.1.6&quot;, &quot;manifest&quot;: { &quot;name&quot;: &quot;…&quot;, &quot;version&quot;: &quot;1.0.0&quot;, &quot;sdk&quot;: &quot;0.1&quot;, &quot;permissions&quot;: [] }, &quot;uiPage&quot;: &quot;&lt;!doctype html&gt;…&quot; }
+{ &quot;op&quot;: &quot;ready&quot;, &quot;v&quot;: 1, &quot;sdk&quot;: &quot;0.1.6&quot;, &quot;manifest&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;guilds&quot;: [{ &quot;gid&quot;: &quot;…&quot;, &quot;name&quot;: &quot;…&quot; }] }</code></pre>
 <p><strong>Call → result:</strong></p>
 <pre><code>{ &quot;op&quot;: &quot;call&quot;, &quot;id&quot;: 7, &quot;method&quot;: &quot;chat.send&quot;, &quot;args&quot;: [&quot;&lt;channel&gt;&quot;, &quot;hello&quot;] }
 { &quot;op&quot;: &quot;result&quot;, &quot;id&quot;: 7, &quot;ok&quot;: true, &quot;value&quot;: { &quot;id&quot;: &quot;&lt;message&gt;&quot; } }</code></pre>
@@ -263,7 +264,7 @@ plugin ◀── ctx.ui.onAction ── panel ◀── {bunker:&quot;action&quo
 <hr>
 <h2 id="appendix-b-versions">Appendix B: Versions</h2>
 <p><code>sdk: &quot;0.1&quot;</code> in the manifest → works with 0.1.x. Fields are added, never removed; breaking changes bump the version.</p>
-<div class="tw"><table><thead><tr><th>Version</th><th>Change</th></tr></thead><tbody><tr><td>0.1.5</td><td><code>ctx.voice.channelOf</code>, <code>ctx.ui.send</code> (data to one user's window), <code>manage</code> in <code>CommandCall</code> / <code>UiAction</code> / page <code>ctx</code></td></tr><tr><td>0.1.4</td><td>Uploading plugins to Bunker (hosting), connecting from your computer (<code>connect</code>)</td></tr><tr><td>0.1.3</td><td><code>playMedia</code>, <code>prefetch</code>, <code>meta</code> event, <code>silent</code> in the <code>error</code> event</td></tr><tr><td>0.1.2</td><td>Voice (<code>voice.speak</code>) and panel window (<code>ui</code>)</td></tr><tr><td>0.1.1</td><td><code>guild.install</code> / <code>guild.uninstall</code> events</td></tr><tr><td>0.1.0</td><td>Events, commands, storage, messages</td></tr></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Version</th><th>Change</th></tr></thead><tbody><tr><td>0.1.6</td><td>Manifest <code>details</code> (long description for the Store detail view)</td></tr><tr><td>0.1.5</td><td><code>ctx.voice.channelOf</code>, <code>ctx.ui.send</code> (data to one user's window), <code>manage</code> in <code>CommandCall</code> / <code>UiAction</code> / page <code>ctx</code></td></tr><tr><td>0.1.4</td><td>Uploading plugins to Bunker (hosting), connecting from your computer (<code>connect</code>)</td></tr><tr><td>0.1.3</td><td><code>playMedia</code>, <code>prefetch</code>, <code>meta</code> event, <code>silent</code> in the <code>error</code> event</td></tr><tr><td>0.1.2</td><td>Voice (<code>voice.speak</code>) and panel window (<code>ui</code>)</td></tr><tr><td>0.1.1</td><td><code>guild.install</code> / <code>guild.uninstall</code> events</td></tr><tr><td>0.1.0</td><td>Events, commands, storage, messages</td></tr></tbody></table></div>
 <p>Examples: <a href="https://github.com/bunker-community/plugin-sdk/tree/main/examples">github.com/bunker-community/plugin-sdk/tree/main/examples</a></p>
 </main>
 </body>

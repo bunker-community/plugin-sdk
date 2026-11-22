@@ -3,6 +3,7 @@
   "name": "Müzik Botu",
   "version": "1.0.0",
   "description": "Ses kanalında YouTube, SoundCloud ve radyo çalar: sıra, çalma listeleri (TR Mix, EDM ve kendi listeleriniz), sohbet komutları (!play, !liste, !skip…). Sol alttaki müzik ikonundan açılır.",
+  "details": "Ses kanalına bir müzik botu getirir. Şarkı adı ya da YouTube / SoundCloud bağlantısı yazarsın, bot kanala girip çalar. Her ses kanalının kendi sırası olur; aynı sunucuda iki kanal ayrı ayrı müzik dinleyebilir.\n\nPencere: ses kanalındayken sol alttaki müzik ikonuna tıkla. Çalan şarkı, süre çubuğu, duraklat / atla / kapat, ses seviyesi ve sıradaki şarkılar burada. Kullanıcı panelinin üstünde de küçük bir \"şimdi çalıyor\" şeridi görünür.\n\nÇalma listeleri: her sunucunun kendi listeleri olur. TR Mix ve EDM hazır gelir, istediğin kadar liste oluşturabilirsin. \"Çal\" listeden karışık 20 şarkıyı sıraya ekler. Listeyi sadece oluşturan kişi ya da sunucu yöneticisi düzenleyebilir.\n\nSohbet komutları (komutu yazan kişi o sunucunun bir ses kanalında olmalı): !play <şarkı> (ya da !p, !çal), !liste <ad>, !trmix, !pause, !devam, !skip, !stop, !vol <0-100>, !kuyruk, !np. Bütün komutlar için !müzik yaz.\n\nKanalda kimse kalmayınca bot bir dakika sonra kendiliğinden çıkar.",
   "author": "Bunker",
   "sdk": "0.1",
   "permissions": [

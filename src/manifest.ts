@@ -26,6 +26,7 @@ export function validateManifest(raw: unknown): ManifestResult {
   const version = str("version", 32);
   if (version && !VERSION_RE.test(version)) errors.push("version: x.y.z biçiminde olmalı");
   const description = str("description", 300, false);
+  const details = str("details", 4000, false);
   const author = str("author", 80, false);
   const main = str("main", 120, false);
   if (main && (main.startsWith("/") || main.includes("..") || main.includes("\\"))) errors.push("main: plugin klasörünün içinde göreli yol olmalı");
@@ -54,7 +55,7 @@ export function validateManifest(raw: unknown): ManifestResult {
     }
   }
   if (errors.length) return { ok: false, errors };
-  return { ok: true, manifest: { id: id!, name: name!, version: version!, description, author, main: main ?? "src/index.ts", sdk: sdk!, permissions, ...(ui ? { ui } : {}) } };
+  return { ok: true, manifest: { id: id!, name: name!, version: version!, description, ...(details ? { details } : {}), author, main: main ?? "src/index.ts", sdk: sdk!, permissions, ...(ui ? { ui } : {}) } };
 }
 
 /** Manifest'in istedigi SDK surumu bu SDK ile uyumlu mu ("0.1" -> 0.1.x; "1" -> 1.x). 0.x'te ara surum de kirici sayilir. */

@@ -1,6 +1,6 @@
 # Bunker Plugin Developer Guide and API Reference
 
-SDK `@bunker-community/plugin-sdk` 0.1.5
+SDK `@bunker-community/plugin-sdk` 0.1.6
 
 This document is for people who want to write plugins (bots) for Bunker: what is required, how to upload, and which
 functions are available.
@@ -71,7 +71,8 @@ A plugin that doesn't follow these rules is rejected or won't run.
 | `version` | yes | `x.y.z` (e.g. `1.0.0`, `1.2.0-beta.1`). |
 | `sdk` | yes | `"0.1"`. |
 | `permissions` | yes | List of permissions; `[]` if you need none. |
-| `description` | no | At most 300 characters; shown in the Store and server settings. |
+| `description` | no | At most 300 characters; shown on Store cards and in server settings. |
+| `details` | no | Long description, at most 4000 characters of plain text (a blank line starts a new paragraph). Shown when someone opens your plugin in the Store: what it does, how to use it, its commands. |
 | `author` | no | At most 80 characters. |
 | `ui` | no | Panel window ([Window](#window-ctxui)). |
 | `id` | — | Don't set it: the plugin id (`ext-xxxxxxxx`) is assigned when you create the plugin on Bunker. |
@@ -522,8 +523,8 @@ message, ~30 calls per second.
 
 **Hello** (first message, within 10 s) and reply:
 ```json
-{ "op": "hello", "token": "ext-…", "sdk": "0.1.5", "manifest": { "name": "…", "version": "1.0.0", "sdk": "0.1", "permissions": [] }, "uiPage": "<!doctype html>…" }
-{ "op": "ready", "v": 1, "sdk": "0.1.5", "manifest": { "…": "…" }, "guilds": [{ "gid": "…", "name": "…" }] }
+{ "op": "hello", "token": "ext-…", "sdk": "0.1.6", "manifest": { "name": "…", "version": "1.0.0", "sdk": "0.1", "permissions": [] }, "uiPage": "<!doctype html>…" }
+{ "op": "ready", "v": 1, "sdk": "0.1.6", "manifest": { "…": "…" }, "guilds": [{ "gid": "…", "name": "…" }] }
 ```
 
 **Call → result:**
@@ -572,6 +573,7 @@ another connection with the same token, or the plugin is running on Bunker · 40
 
 | Version | Change |
 |---|---|
+| 0.1.6 | Manifest `details` (long description for the Store detail view) |
 | 0.1.5 | `ctx.voice.channelOf`, `ctx.ui.send` (data to one user's window), `manage` in `CommandCall` / `UiAction` / page `ctx` |
 | 0.1.4 | Uploading plugins to Bunker (hosting), connecting from your computer (`connect`) |
 | 0.1.3 | `playMedia`, `prefetch`, `meta` event, `silent` in the `error` event |

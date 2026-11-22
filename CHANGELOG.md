@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.6
+- Manifest `details`: long description shown in the Store detail view (up to 4000 characters).
+
 ## 0.1.5
 - `ctx.voice.channelOf(uid)`, `ctx.ui.send(uid, where, data)` (data to one user's window: `{ bunker: "message", data }`).
 - `manage` in `CommandCall`, `UiAction` and the window page `ctx`.
