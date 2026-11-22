@@ -1,15 +1,15 @@
 /*
- * Uzak plugin istemcisi: plugin'i kendi bilgisayarinda / sunucunda calistirip Bunker'a gecitten baglar.
+ * Remote plugin client: runs the plugin on your own computer / server and connects it to Bunker through the gateway.
  *
  *   import { connect, definePlugin } from "@bunker-community/plugin-sdk";
- *   const plugin = definePlugin({ setup(ctx) { ctx.command("selam", (c) => c.reply("Selam!")); } });
+ *   const plugin = definePlugin({ setup(ctx) { ctx.command("hi", (c) => c.reply("Hi!")); } });
  *   connect(plugin, { token: process.env.BUNKER_TOKEN! });
  *
- * Plugin kodu yerel plugin'lerle AYNI (PluginContext). Fark: ses kanalina ham PCM gonderilemez (playPcm yok).
- * Baglanti koparsa kendiliginden yeniden baglanir; dinleyiciler ve komutlar yeniden kaydedilir.
- * Kapi protokolu (JSON, WebSocket):
- *   istemci -> { op: "hello", token, sdk, manifest?, uiPage? } | { op: "call", id, method, args }
- *   sunucu  -> { op: "ready", manifest, guilds } | { op: "result", id, ok, value | error }
+ * The plugin code is the SAME as for local plugins (PluginContext). Difference: raw PCM can't be sent to a voice channel (no playPcm).
+ * If the connection drops it reconnects on its own; listeners and commands are registered again.
+ * Gateway protocol (JSON, WebSocket):
+ *   client -> { op: "hello", token, sdk, manifest?, uiPage? } | { op: "call", id, method, args }
+ *   server -> { op: "ready", manifest, guilds } | { op: "result", id, ok, value | error }
  *            | { op: "event", name, data } | { op: "command", name, call } | { op: "voice", cid, ev, args, state }
  */
 import type {
@@ -19,29 +19,29 @@ import { SDK_VERSION as SDK } from "./version.ts";
 export const DEFAULT_GATEWAY = "wss://bunker.community/app/api/plugin/gateway";
 
 export interface ConnectOptions {
-  /** Ayarlar -> Geliştirici'den alinan anahtar */
+  /** The token from Settings -> Developer */
   token: string;
-  /** Gecit adresi (varsayilan bunker.community) */
+  /** Gateway address (default bunker.community) */
   url?: string;
   /**
-   * Manifest (bunker-plugin.json icerigi). Verilmezse `dir` klasorundeki bunker-plugin.json okunur; o da yoksa
-   * Bunker'da kayitli manifest kullanilir. id alani yok sayilir (anahtarin plugin'i).
+   * Manifest (the content of bunker-plugin.json). If not given, bunker-plugin.json in the `dir` folder is read; if that is missing too
+   * the manifest stored on Bunker is used. The id field is ignored (it is the key's plugin).
    */
   manifest?: Partial<PluginManifest>;
-  /** bunker-plugin.json ve pencere sayfasinin klasoru (varsayilan: calisma klasoru) */
+  /** Folder of bunker-plugin.json and the window page (default: the working directory) */
   dir?: string;
-  /** Pencere sayfasinin HTML'i (verilmezse manifest ui.page dosyasi `dir`'den okunur) */
+  /** HTML of the window page (if not given, the manifest's ui.page file is read from `dir`) */
   uiPage?: string;
   /**
-   * Baglanti (varsayilan: WebSocket(url)). Bunker'da barindirilan plugin'lerde calisma ortami kendi kanalini
-   * verir; normalde verme.
+   * Connection (default: WebSocket(url)). For plugins hosted on Bunker the runtime provides its own channel;
+   * don't pass it normally.
    */
   transport?: (url: string) => TransportLike;
-  /** Kayit (varsayilan console) */
+  /** Logger (default console) */
   logger?: { info(...a: unknown[]): void; warn(...a: unknown[]): void; error(...a: unknown[]): void };
 }
 
-/** WebSocket'in kullanilan kismi */
+/** The part of WebSocket that is used */
 export interface TransportLike {
   onopen: ((e?: unknown) => void) | null;
   onmessage: ((e: { data: unknown }) => void) | null;
@@ -52,19 +52,19 @@ export interface TransportLike {
 }
 
 export interface Connection {
-  /** Ilk baglanti kuruldu ve setup calisti */
+  /** The first connection was made and setup ran */
   readonly ready: Promise<void>;
   readonly connected: boolean;
-  /** Baglantiyi kapat, onUnload'lari calistir */
+  /** Close the connection, run the onUnload handlers */
   close(): Promise<void>;
 }
 
-/** Bu kodlarla kapanirsa yeniden denenmez */
+/** No retry if it closes with these codes */
 const FATAL: Record<number, string> = {
-  4001: "anahtar geçersiz",
-  4003: "plugin Bunker'da kapalı",
-  4004: "aynı anahtarla başka bir bağlantı açıldı",
-  4005: "manifest geçersiz",
+  4001: "invalid key",
+  4003: "plugin is off on Bunker",
+  4004: "another connection was opened with the same key",
+  4005: "invalid manifest",
 };
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
@@ -91,14 +91,14 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
 
   const raw = (m: unknown) => { if (ws && open) ws.send(JSON.stringify(m)); };
   function call<T = unknown>(method: string, ...args: unknown[]): Promise<T> {
-    if (!ws || !open) return Promise.reject(new Error("Bunker'a bağlı değil"));
+    if (!ws || !open) return Promise.reject(new Error("not connected to Bunker"));
     const id = ++seq;
     return new Promise<T>((resolve, reject) => {
       pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
       raw({ op: "call", id, method, args });
     });
   }
-  /** Sonucu beklenmeyen cagri (hata kayda) */
+  /** A call whose result wasn't awaited (error to the log) */
   const fire = (method: string, ...args: unknown[]) => { call(method, ...args).catch((e: Error) => log.warn(`[bunker] ${method}: ${e.message}`)); };
   const safe = (where: string, fn: () => unknown) => {
     try { const r = fn(); if (r && typeof (r as Promise<unknown>).then === "function") (r as Promise<unknown>).catch((e) => log.error(`[bunker] ${where}:`, e)); }
@@ -117,7 +117,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
         const ui = m?.ui as { page?: string } | undefined;
         if (ui?.page && page === undefined) page = fs.readFileSync(path.join(dir, ui.page), "utf8");
       } catch (e) {
-        log.warn("[bunker] manifest/pencere okunamadı:", (e as Error).message);
+        log.warn("[bunker] could not read manifest/window:", (e as Error).message);
       }
     }
     return { m, page };
@@ -144,7 +144,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
     },
     command(name: string, fn: (c: CommandCall) => unknown) {
       const n = String(name).replace(/^!/, "").toLocaleLowerCase("tr");
-      if (commands.has(n)) throw new Error(`!${n} zaten kayıtlı`);
+      if (commands.has(n)) throw new Error(`!${n} is already registered`);
       commands.set(n, fn);
       if (open) fire("command", n);
       return () => { commands.delete(n); if (open) fire("uncommand", n); };
@@ -156,6 +156,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
       delete: (key) => call("storage.delete", key).then(() => {}),
       keys: (prefix = "") => call<string[]>("storage.keys", prefix),
     },
+    serverLang: (gid: string) => call<"en" | "tr">("serverLang", gid).then((v) => (v === "tr" ? "tr" : "en")),
     voice: {
       async join(cid: string) { return sessionFor(await call<SessionState>("voice.join", cid)); },
       session(cid: string) { return sessions.get(cid) ?? null; },
@@ -185,7 +186,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
       case "ready":
         manifest = m.manifest;
         backoff = 1000;
-        log.info(`[bunker] bağlandı: ${manifest!.name} (${manifest!.id}), ${m.guilds?.length ?? 0} sunucu`);
+        log.info(`[bunker] connected: ${manifest!.name} (${manifest!.id}), ${m.guilds?.length ?? 0} servers`);
         if (!started) {
           started = true;
           Promise.resolve().then(() => def.setup(ctx)).then(() => readyResolve(), (e) => { log.error("[bunker] setup:", e); readyReject(e); });
@@ -205,7 +206,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
       case "command": {
         const fn = commands.get(m.name);
         const c = m.call;
-        if (fn) safe("!" + m.name, () => fn({ ...c, reply: async (text: string) => { await call("chat.send", c.chan, text); } }));
+        if (fn) safe("!" + m.name, () => fn({ ...c, lang: c.lang === "tr" ? "tr" : "en", reply: async (text: string) => { await call("chat.send", c.chan, text); } }));
         return;
       }
       case "voice": {
@@ -232,19 +233,19 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
     sock.onclose = (e) => {
       open = false;
       ws = null;
-      for (const p of pending.values()) p.reject(new Error("bağlantı koptu"));
+      for (const p of pending.values()) p.reject(new Error("connection lost"));
       pending.clear();
-      for (const s of sessions.values()) { s.st = { ...s.st, connected: false, playing: false }; s.emit("leave", ["bağlantı koptu"], safe); }
+      for (const s of sessions.values()) { s.st = { ...s.st, connected: false, playing: false }; s.emit("leave", ["connection lost"], safe); }
       sessions.clear();
       if (closed) return;
       const fatal = FATAL[e.code];
       if (fatal) {
-        log.error(`[bunker] bağlantı kapandı: ${fatal}${e.reason ? ` (${e.reason})` : ""}`);
+        log.error(`[bunker] connection closed: ${fatal}${e.reason ? ` (${e.reason})` : ""}`);
         closed = true;
         readyReject(new Error(e.reason || fatal));
         return;
       }
-      log.warn(`[bunker] bağlantı koptu (${e.code}${e.reason ? " " + e.reason : ""}), ${Math.round(backoff / 1000)} sn sonra yeniden`);
+      log.warn(`[bunker] connection lost (${e.code}${e.reason ? " " + e.reason : ""}), retrying in ${Math.round(backoff / 1000)} s`);
       setTimeout(() => void dial(), backoff);
       backoff = Math.min(30_000, backoff * 2);
     };
@@ -259,7 +260,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
       if (closed && !ws) return;
       closed = true;
       for (const u of unloaders.splice(0)) { try { await u(); } catch (e) { log.error("[bunker] onUnload:", e); } }
-      ws?.close(1000, "kapatıldı");
+      ws?.close(1000, "turned off");
     },
   };
 }
@@ -277,7 +278,7 @@ class RemoteSession implements VoiceSession {
   get connected() { return this.st.connected; }
   private do(method: string, ...args: unknown[]) { return this.call<SessionState>("voice.call", this.st.cid, method, args).then((st) => { if (st) this.st = st; }); }
   private quiet(method: string, ...args: unknown[]) { this.do(method, ...args).catch(() => {}); }
-  playPcm(): void { throw new Error("playPcm uzak plugin'lerde yok (playUrl / playMedia kullan)"); }
+  playPcm(): void { throw new Error("playPcm is not available for remote plugins (use playUrl / playMedia)"); }
   playUrl(url: string, opts?: { seek?: number }) { return this.do("playUrl", url, opts ?? {}); }
   playMedia(query: string, opts?: { seek?: number }) { return this.do("playMedia", query, opts ?? {}); }
   prefetch(query: string) { this.quiet("prefetch", query); }

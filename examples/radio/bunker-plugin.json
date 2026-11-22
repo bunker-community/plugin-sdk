@@ -1,9 +1,9 @@
 {
   "id": "radio",
-  "name": "Radyo",
+  "name": "Radio",
   "version": "0.1.0",
-  "description": "Ses kanalında internet radyosu ya da bir ses bağlantısı çalar. Sol alttaki plugin'lerden açılır.",
-  "details": "Ses kanalında internet radyosu çalar. Radyonun yayın adresini (mp3 ya da aac akışı) ya da bir ses dosyasının bağlantısını yapıştırırsın, bot kanala girip yayını çalar.\n\nPencere: ses kanalındayken sol alttaki radyo ikonuna tıkla. Duraklatabilir, kapatabilir, sesi ayarlayabilir, son çalınan yayınlara tek tıkla dönebilirsin. Son çalınanlar sunucu başına saklanır.\n\nKanalda kimse kalmayınca bot bir dakika sonra kendiliğinden çıkar.",
+  "description": "Plays internet radio or an audio link in a voice channel. Opens from the plugins at the bottom left.",
+  "details": "Plays internet radio in your voice channel. Paste a station's stream address (mp3 or aac stream) or a link to an audio file, and the bot joins the channel and plays it.\n\nWindow: while in a voice channel, click the radio icon at the bottom left. You can pause, stop, change the volume and go back to recently played streams with one click. Recent streams are saved per server.\n\nWhen nobody is left in the channel, the bot leaves on its own after a minute.",
   "author": "Bunker",
   "sdk": "0.1",
   "permissions": [
@@ -11,7 +11,7 @@
     "storage"
   ],
   "ui": {
-    "title": "Radyo",
+    "title": "Radio",
     "icon": "radio",
     "page": "ui/index.html",
     "scope": "voice"

@@ -1,9 +1,9 @@
 {
   "id": "music",
-  "name": "Müzik Botu",
+  "name": "Music Bot",
   "version": "1.0.0",
-  "description": "Ses kanalında YouTube, SoundCloud ve radyo çalar: sıra, çalma listeleri (TR Mix, EDM ve kendi listeleriniz), sohbet komutları (!play, !liste, !skip…). Sol alttaki müzik ikonundan açılır.",
-  "details": "Ses kanalına bir müzik botu getirir. Şarkı adı ya da YouTube / SoundCloud bağlantısı yazarsın, bot kanala girip çalar. Her ses kanalının kendi sırası olur; aynı sunucuda iki kanal ayrı ayrı müzik dinleyebilir.\n\nPencere: ses kanalındayken sol alttaki müzik ikonuna tıkla. Çalan şarkı, süre çubuğu, duraklat / atla / kapat, ses seviyesi ve sıradaki şarkılar burada. Kullanıcı panelinin üstünde de küçük bir \"şimdi çalıyor\" şeridi görünür.\n\nÇalma listeleri: her sunucunun kendi listeleri olur. TR Mix ve EDM hazır gelir, istediğin kadar liste oluşturabilirsin. \"Çal\" listeden karışık 20 şarkıyı sıraya ekler. Listeyi sadece oluşturan kişi ya da sunucu yöneticisi düzenleyebilir.\n\nSohbet komutları (komutu yazan kişi o sunucunun bir ses kanalında olmalı): !play <şarkı> (ya da !p, !çal), !liste <ad>, !trmix, !pause, !devam, !skip, !stop, !vol <0-100>, !kuyruk, !np. Bütün komutlar için !müzik yaz.\n\nKanalda kimse kalmayınca bot bir dakika sonra kendiliğinden çıkar.",
+  "description": "Plays YouTube, SoundCloud and radio in voice channels: queue, playlists (TR Mix, EDM and your own), chat commands (!play, !list, !skip…). Opens from the music icon at the bottom left.",
+  "details": "Brings a music bot to your voice channel. Type a song name or a YouTube / SoundCloud link and the bot joins the channel and plays it. Every voice channel has its own queue, so two channels on the same server can listen to different music.\n\nWindow: while in a voice channel, click the music icon at the bottom left. The current song, progress bar, pause / skip / stop, volume and the queue are there. A small \"now playing\" strip also shows above your user panel.\n\nPlaylists: every server has its own playlists. TR Mix and EDM come ready, and you can create as many as you like. \"Play\" adds 20 shuffled songs from the list to the queue. Only the person who created a playlist or a server admin can edit it.\n\nChat commands (whoever types the command must be in a voice channel of that server): !play <song>, !list <name>, !trmix, !pause, !resume, !skip, !stop, !vol <0-100>, !queue, !np. Type !music for all commands. Turkish aliases work too (!çal, !liste, !devam, !kuyruk, !müzik).\n\nWhen nobody is left in the channel, the bot leaves on its own after a minute.",
   "author": "Bunker",
   "sdk": "0.1",
   "permissions": [
@@ -13,7 +13,7 @@
     "chat.send"
   ],
   "ui": {
-    "title": "Müzik",
+    "title": "Music",
     "icon": "music",
     "page": "ui/index.html",
     "scope": "voice"

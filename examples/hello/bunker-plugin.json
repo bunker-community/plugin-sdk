@@ -1,9 +1,9 @@
 {
   "id": "hello",
-  "name": "Merhaba Botu",
+  "name": "Hello Bot",
   "version": "0.1.0",
-  "description": "Örnek plugin: !merhaba yazana cevap verir ve kaç kez selamlandığını sayar.",
-  "details": "Plugin yazmayı öğrenmek isteyenler için küçük bir örnek. Sohbete !merhaba yazan kişiye selam verir ve o kişinin kaç kez selamlandığını sayar (sayı Bunker'da saklanır, bot yeniden başlasa da kaybolmaz).\n\nKodu açık: plugin SDK'sının GitHub deposundaki examples/hello klasörüne bak.",
+  "description": "Example plugin: replies to whoever types !merhaba and counts how many times they were greeted.",
+  "details": "A small example for anyone learning to write plugins. It greets whoever types !merhaba in chat and counts how many times that person has been greeted (the count is stored in Bunker, so it survives restarts).\n\nThe code is open: see the examples/hello folder in the plugin SDK's GitHub repository.",
   "author": "Bunker",
   "sdk": "0.1",
   "permissions": [

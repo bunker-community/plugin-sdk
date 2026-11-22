@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Müzik</title>
+<title>Music</title>
 <style>
   :root { --bg: #1e1f22; --text: #dbdee1; --muted: #949ba4; --accent: #6c6cff; --border: rgba(255,255,255,.08); --hover: rgba(255,255,255,.06); }
   * { box-sizing: border-box; }
@@ -66,32 +66,55 @@
 <body>
   <div class="now">
     <div class="cover" id="cover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-    <div class="meta"><b id="title">Bir şey çalmıyor</b><span class="artist" id="artist">Aşağıya şarkı adı ya da bağlantı yaz</span><span class="by" id="by"></span></div>
+    <div class="meta"><b id="title" data-t="Nothing is playing">Nothing is playing</b><span class="artist" id="artist">Type a song name or a link below</span><span class="by" id="by"></span></div>
   </div>
   <div class="bar" id="bar" hidden><div class="track"><div class="fill" id="fill"></div></div><div class="times"><span id="t0">0:00</span><span id="t1"></span></div></div>
   <div class="ctl" id="ctl" hidden>
-    <button class="icon round primary" id="pp" title="Duraklat"></button>
-    <button class="icon" id="skip" title="Atla"></button>
-    <button class="icon" id="stop" title="Botu kapat"></button>
+    <button class="icon round primary" id="pp" title="Pause"></button>
+    <button class="icon" id="skip" data-t-title="Skip" title="Skip"></button>
+    <button class="icon" id="stop" data-t-title="Stop the bot" title="Stop the bot"></button>
     <label class="vol"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg><input type="range" id="vol" min="0" max="100"><span id="volv"></span></label>
   </div>
   <div class="notice" id="notice" hidden></div>
-  <div class="row" id="f"><input type="text" id="q" maxlength="500" placeholder="Şarkı adı ya da YouTube / SoundCloud bağlantısı" autocomplete="off"><button type="button" class="primary" id="add">Çal</button></div>
-  <p class="hint">Şarkı adı yazarsan aranır. Her ses kanalının kendi botu var.</p>
-  <div class="qhead"><h4 id="qtitle">Sıra</h4><button class="link" id="clear" hidden>Temizle</button></div>
-  <div id="queue"><div class="empty">Sıra boş.</div></div>
+  <div class="row" id="f"><input type="text" id="q" maxlength="500" data-t-ph="Song name or a YouTube / SoundCloud link" placeholder="Song name or a YouTube / SoundCloud link" autocomplete="off"><button type="button" class="primary" id="add">Play</button></div>
+  <p class="hint" data-t="A song name is searched. Every voice channel has its own bot.">A song name is searched. Every voice channel has its own bot.</p>
+  <div class="qhead"><h4 id="qtitle">Queue</h4><button class="link" id="clear" data-t="Clear" hidden>Clear</button></div>
+  <div id="queue"></div>
   <div class="err" id="err" hidden></div>
   <div class="sec">
-    <div class="qhead"><h4>Çalma listeleri</h4><button class="link" id="newlist">+ Yeni liste</button></div>
-    <div id="lists"><div class="empty">Liste yok.</div></div>
+    <div class="qhead"><h4 data-t="Playlists">Playlists</h4><button class="link" id="newlist" data-t="+ New list">+ New list</button></div>
+    <div id="lists"></div>
     <div class="editor" id="editor" hidden>
-      <input type="text" id="plname" maxlength="40" placeholder="Liste adı (ör. Akşam listesi)" autocomplete="off">
-      <textarea id="plsongs" spellcheck="false" placeholder="Her satıra bir şarkı adı ya da bağlantı:&#10;Tarkan - Şımarık&#10;https://www.youtube.com/watch?v=…"></textarea>
-      <div class="bt"><span id="plcount">0 şarkı</span><button type="button" id="plcancel">Vazgeç</button><button type="button" class="primary" id="plsave">Kaydet</button></div>
+      <input type="text" id="plname" maxlength="40" data-t-ph="List name (e.g. Evening list)" placeholder="List name (e.g. Evening list)" autocomplete="off">
+      <textarea id="plsongs" spellcheck="false" data-t-ph="One song name or link per line:&#10;Daft Punk - One More Time&#10;https://www.youtube.com/watch?v=…" placeholder="One song name or link per line:&#10;Daft Punk - One More Time&#10;https://www.youtube.com/watch?v=…"></textarea>
+      <div class="bt"><span id="plcount">0 songs</span><button type="button" id="plcancel" data-t="Cancel">Cancel</button><button type="button" class="primary" id="plsave" data-t="Save">Save</button></div>
     </div>
   </div>
 <script>
-  // Bunker plugin penceresi: durum panelden ({bunker:"state"}), islemler panele ({bunker:"action"})
+  // Bunker plugin window: state from the panel ({bunker:"state"}), actions to the panel ({bunker:"action"}).
+  // The panel doesn't translate plugin pages: texts are English, Turkish comes from TR by ctx.lang.
+  const TR = {
+    "Nothing is playing": "Bir şey çalmıyor", "Type a song name or a link below": "Aşağıya şarkı adı ya da bağlantı yaz", "Pause": "Duraklat", "Resume": "Devam",
+    "Skip": "Atla", "Stop the bot": "Botu kapat", "Song name or a YouTube / SoundCloud link": "Şarkı adı ya da YouTube / SoundCloud bağlantısı", "Play": "Çal",
+    "Add to queue": "Sıraya ekle", "A song name is searched. Every voice channel has its own bot.": "Şarkı adı yazarsan aranır. Her ses kanalının kendi botu var.",
+    "Queue": "Sıra", "Queue · {n}": "Sıra · {n}", "Clear": "Temizle", "The queue is empty.": "Sıra boş.", "Playlists": "Çalma listeleri", "+ New list": "+ Yeni liste",
+    "List name (e.g. Evening list)": "Liste adı (ör. Akşam listesi)", "One song name or link per line:\nDaft Punk - One More Time\nhttps://www.youtube.com/watch?v=…": "Her satıra bir şarkı adı ya da bağlantı:\nTarkan - Şımarık\nhttps://www.youtube.com/watch?v=…",
+    "{n} songs": "{n} şarkı", "Cancel": "Vazgeç", "Save": "Kaydet", "Preparing…": "Hazırlanıyor…", "live": "canlı", "The bot is joining the channel…": "Bot kanala bağlanıyor…",
+    "Requested by {nick}": "İsteyen: {nick}", " · paused": " · duraklatıldı", "Remove from queue": "Sıradan çıkar",
+    "No lists. You can collect the songs you listen to often in a list.": "Liste yok. Sık dinlediğiniz şarkıları bir listeye toplayabilirsin.",
+    "20 shuffled songs from the list to the queue": "Listeden karışık 20 şarkı sıraya", "Edit": "Düzenle", "Delete": "Sil", "Delete?": "Silinsin mi?",
+    "YouTube blocked, searching on SoundCloud": "YouTube engelledi, SoundCloud'da aranıyor", "YouTube blocked; the SoundCloud results are protected too (DRM)": "YouTube engelledi; SoundCloud sonuçları da korumalı (DRM)",
+    "YouTube blocked (asked for sign-in / bot verification)": "YouTube engelledi (giriş / bot doğrulaması istedi)",
+  };
+  let LANG = "en";
+  const t = (s, vars) => { let out = LANG === "tr" ? TR[s] ?? s : s; if (vars) out = out.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? "")); return out; };
+  /** Static texts marked with data-t / data-t-title / data-t-ph */
+  function applyLang() {
+    for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
+    for (const el of document.querySelectorAll("[data-t-title]")) el.title = t(el.dataset.tTitle);
+    for (const el of document.querySelectorAll("[data-t-ph]")) el.placeholder = t(el.dataset.tPh);
+    document.documentElement.lang = LANG;
+  }
   const $ = (id) => document.getElementById(id);
   const act = (name, data) => parent.postMessage({ bunker: "action", name, data }, "*");
   const ICON = {
@@ -108,10 +131,10 @@
 
   function tick() {
     const n = st?.now;
-    if (!n || !st.playing) { $("fill").style.width = "0"; $("t0").textContent = st?.connecting || (n && !st.playing) ? "Hazırlanıyor…" : "0:00"; $("t1").textContent = n?.duration ? mmss(n.duration) : ""; return; }
+    if (!n || !st.playing) { $("fill").style.width = "0"; $("t0").textContent = st?.connecting || (n && !st.playing) ? t("Preparing…") : "0:00"; $("t1").textContent = n?.duration ? mmss(n.duration) : ""; return; }
     const el = st.elapsed + (st.paused ? 0 : (Date.now() - rx) / 1000);
     $("t0").textContent = mmss(el);
-    $("t1").textContent = n.duration ? mmss(n.duration) : "canlı";
+    $("t1").textContent = n.duration ? mmss(n.duration) : t("live");
     $("fill").style.width = n.duration ? Math.min(100, (el / n.duration) * 100) + "%" : "100%";
   }
   setInterval(tick, 1000);
@@ -121,25 +144,25 @@
     const cover = $("cover");
     cover.style.backgroundImage = n?.thumb ? `url("${n.thumb.replace(/"/g, "")}")` : "";
     cover.classList.toggle("img", Boolean(n?.thumb));
-    $("title").textContent = n ? n.title : st?.connecting ? "Bot kanala bağlanıyor…" : "Bir şey çalmıyor";
-    $("artist").textContent = n ? (n.artist || "") : "Aşağıya şarkı adı ya da bağlantı yaz";
-    $("by").textContent = n ? "İsteyen: " + n.byNick + (st.paused ? " · duraklatıldı" : "") : "";
+    $("title").textContent = n ? n.title : st?.connecting ? t("The bot is joining the channel…") : t("Nothing is playing");
+    $("artist").textContent = n ? (n.artist || "") : t("Type a song name or a link below");
+    $("by").textContent = n ? t("Requested by {nick}", { nick: n.byNick }) + (st.paused ? t(" · paused") : "") : "";
     $("bar").hidden = !n;
     $("ctl").hidden = !st || (!n && !st.queue.length);
     $("pp").innerHTML = st?.paused ? ICON.play : ICON.pause;
-    $("pp").title = st?.paused ? "Devam" : "Duraklat";
+    $("pp").title = st?.paused ? t("Resume") : t("Pause");
     $("pp").disabled = !n;
     $("skip").disabled = !n;
-    if (st && !dragging) { $("vol").value = st.volume; $("volv").textContent = "%" + st.volume; }
+    if (st && !dragging) { $("vol").value = st.volume; $("volv").textContent = st.volume + "%"; }
     $("notice").hidden = !st?.notice;
-    $("notice").textContent = st?.notice || "";
-    $("add").textContent = n ? "Sıraya ekle" : "Çal";
+    $("notice").textContent = st?.notice ? t(st.notice) : "";
+    $("add").textContent = n ? t("Add to queue") : t("Play");
     const q = st?.queue ?? [];
-    $("qtitle").textContent = q.length ? `Sıra · ${q.length}` : "Sıra";
+    $("qtitle").textContent = q.length ? t("Queue · {n}", { n: q.length }) : t("Queue");
     $("clear").hidden = q.length < 2;
     const box = $("queue");
     box.replaceChildren();
-    if (!q.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Sıra boş."; box.append(e); }
+    if (!q.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = t("The queue is empty."); box.append(e); }
     q.forEach((t, i) => {
       const row = document.createElement("div");
       row.className = "item";
@@ -148,7 +171,7 @@
       const b = document.createElement("b"); b.textContent = t.title;
       const sm = document.createElement("small"); sm.textContent = t.byNick;
       tx.append(b, sm);
-      const x = document.createElement("button"); x.title = "Sıradan çıkar"; x.innerHTML = ICON.x; x.onclick = () => act("remove", { i });
+      const x = document.createElement("button"); x.title = t("Remove from queue"); x.innerHTML = ICON.x; x.onclick = () => act("remove", { i });
       row.append(num, tx, x);
       box.append(row);
     });
@@ -156,27 +179,27 @@
     tick();
   }
 
-  // ---- calma listeleri
+  // ---- playlists
   function renderLists() {
     const box = $("lists");
     const ls = st?.lists ?? [];
     box.replaceChildren();
-    if (!ls.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Liste yok. Sık dinlediğiniz şarkıları bir listeye toplayabilirsin."; box.append(e); return; }
+    if (!ls.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = t("No lists. You can collect the songs you listen to often in a list."); box.append(e); return; }
     for (const p of ls) {
       const row = document.createElement("div");
       row.className = "item";
       const tx = document.createElement("div");
       const b = document.createElement("b"); b.textContent = p.name;
-      const sm = document.createElement("small"); sm.textContent = p.count + " şarkı";
+      const sm = document.createElement("small"); sm.textContent = t("{n} songs", { n: p.count });
       tx.append(b, sm);
       const acts = document.createElement("div"); acts.className = "acts";
-      const play = document.createElement("button"); play.className = "play"; play.textContent = "Çal"; play.title = "Listeden karışık 20 şarkı sıraya";
+      const play = document.createElement("button"); play.className = "play"; play.textContent = t("Play"); play.title = t("20 shuffled songs from the list to the queue");
       play.onclick = () => act("pl.play", { id: p.id });
       acts.append(play);
       if (p.by === me?.uid || manage) {
-        const ed = document.createElement("button"); ed.textContent = "Düzenle"; ed.onclick = () => act("pl.get", { id: p.id });
-        const del = document.createElement("button"); del.textContent = "Sil";
-        del.onclick = () => { if (del.dataset.armed) return act("pl.delete", { id: p.id }); del.dataset.armed = "1"; del.textContent = "Silinsin mi?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Sil"; }, 3000); };
+        const ed = document.createElement("button"); ed.textContent = t("Edit"); ed.onclick = () => act("pl.get", { id: p.id });
+        const del = document.createElement("button"); del.textContent = t("Delete");
+        del.onclick = () => { if (del.dataset.armed) return act("pl.delete", { id: p.id }); del.dataset.armed = "1"; del.textContent = t("Delete?"); setTimeout(() => { delete del.dataset.armed; del.textContent = t("Delete"); }, 3000); };
         acts.append(ed, del);
       }
       row.append(tx, acts);
@@ -192,7 +215,7 @@
     $("plname").focus();
   }
   const closeEditor = () => { editing = null; $("editor").hidden = true; };
-  const recount = () => { $("plcount").textContent = $("plsongs").value.split("\n").map((x) => x.trim()).filter(Boolean).length + " şarkı"; };
+  const recount = () => { $("plcount").textContent = $("plsongs").value.split("\n").map((x) => x.trim()).filter(Boolean).length + ""; $("plcount").textContent = t("{n} songs", { n: $("plcount").textContent }); };
   function showErr(text) {
     $("err").textContent = text; $("err").hidden = false;
     clearTimeout(errTimer); errTimer = setTimeout(() => { $("err").hidden = true; }, 8000);
@@ -202,7 +225,7 @@
     const m = e.data;
     if (e.source !== parent || !m) return;
     if (m.bunker === "message") {
-      // sadece bana: liste icerigi, kayit sonucu, hata
+      // only to me: list content, save result, error
       const d = m.data || {};
       if (d.type === "pl") openEditor(d.pl);
       else if (d.type === "saved") closeEditor();
@@ -211,15 +234,17 @@
     }
     if (m.bunker !== "state") return;
     me = m.ctx?.me ?? null;
+    const lang = m.ctx?.lang === "tr" ? "tr" : "en";
+    if (lang !== LANG) { LANG = lang; applyLang(); }
     manage = Boolean(m.ctx?.manage);
     const t = m.ctx?.theme;
     if (t) for (const k of ["bg", "text", "muted", "accent", "border", "hover"]) if (t[k]) document.documentElement.style.setProperty("--" + k, t[k]);
     st = m.state;
-    rx = Date.now() - (Number(m.ctx?.age) || 0); // durum eskiyse (pencere yeniden acildi vb.) gecen sureyi say
+    rx = Date.now() - (Number(m.ctx?.age) || 0); // if the state is old (window reopened etc.) count the time that passed
     render();
     if (!m.state && !asked) { asked = true; act("hello"); }
   });
-  // Izole cercevede form gonderme kapali (submit olayi hic gelmez): tiklama + Enter
+  // Forms don't submit in the isolated frame (no submit event at all): click + Enter
   const add = () => { const v = $("q").value.trim(); if (v) act("add", { q: v }); $("q").value = ""; };
   $("add").onclick = add;
   $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
@@ -229,7 +254,7 @@
   $("clear").onclick = () => act("clear");
   $("vol").oninput = () => {
     dragging = true;
-    $("volv").textContent = "%" + $("vol").value;
+    $("volv").textContent = $("vol").value + "%";
     clearTimeout(volTimer);
     volTimer = setTimeout(() => { act("volume", { v: Number($("vol").value) }); dragging = false; }, 150);
   };

@@ -1,7 +1,7 @@
 /*
- * Radyo: SDK'nin ses (ctx.voice) ve pencere (ctx.ui) ornegi.
- * Pencereden bir yayin/ses adresi verilir; plugin kisinin bulundugu ses kanalina katilip calar.
- * Durum kanal basina: { url, label, playing, paused, volume, by, error }. Son calinanlar sunucu basina depoda.
+ * Radio: example of the SDK's voice (ctx.voice) and window (ctx.ui).
+ * A stream/audio address is given from the window; the plugin joins the voice channel the person is in and plays it.
+ * State per channel: { url, label, playing, paused, volume, by, error }. Recently played per server in storage.
  */
 import { definePlugin, type PluginContext, type VoiceSession } from "@bunker-community/plugin-sdk";
 
@@ -12,7 +12,7 @@ const labelOf = (url: string) => { try { const u = new URL(url); return (u.hostn
 
 export default definePlugin({
   setup(ctx: PluginContext) {
-    /** cid -> kanal durumu */
+    /** cid -> channel state */
     const now = new Map<string, Now & { gid: string }>();
 
     const recent = async (gid: string) => (await ctx.storage.get<Recent>("recent:" + gid)) ?? [];
@@ -45,7 +45,7 @@ export default definePlugin({
         const list = (await recent(a.gid)).filter((r) => r.url !== url);
         list.unshift({ url, label });
         await ctx.storage.set("recent:" + a.gid, list.slice(0, 8));
-        ctx.log.info(`${a.nick} çaldı: ${label}`, { gid: a.gid, cid: a.cid });
+        ctx.log.info(`${a.nick} played: ${label}`, { gid: a.gid, cid: a.cid });
       } else if (a.name === "volume" && n) {
         n.volume = Math.max(0, Math.min(100, Math.round(Number(d.v) || 0)));
         ctx.voice.session(a.cid)?.setVolume(n.volume);

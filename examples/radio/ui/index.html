@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Radyo</title>
+<title>Radio</title>
 <style>
   :root { --bg: #1e1f22; --text: #dbdee1; --muted: #949ba4; --accent: #6c6cff; --border: rgba(255,255,255,.08); --hover: rgba(255,255,255,.06); }
   * { box-sizing: border-box; }
@@ -42,16 +42,30 @@
 <body>
   <div class="now">
     <div class="disc" id="disc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></div>
-    <div class="meta"><b id="title">Bir şey çalmıyor</b><span id="sub">Aşağıya bir yayın adresi yapıştır</span></div>
+    <div class="meta"><b id="title">Nothing is playing</b><span id="sub">Paste a stream address below</span></div>
     <div class="btns" id="btns"></div>
   </div>
-  <div class="vol" id="volrow" hidden><span>Ses</span><input type="range" id="vol" min="0" max="100"><span id="volv"></span></div>
-  <div class="row" id="f"><input type="url" id="url" placeholder="https://… yayın ya da ses bağlantısı"><button type="button" class="primary" id="go">Çal</button></div>
-  <p class="hint">Radyo yayın adresleri (mp3/aac akışı) ya da doğrudan ses dosyası bağlantısı.</p>
-  <h4>Son çalınanlar</h4>
-  <div id="recent"><div class="empty">Henüz yok.</div></div>
+  <div class="vol" id="volrow" hidden><span data-t="Volume">Volume</span><input type="range" id="vol" min="0" max="100"><span id="volv"></span></div>
+  <div class="row" id="f"><input type="url" id="url" data-t-ph="https://… stream or audio link" placeholder="https://… stream or audio link"><button type="button" class="primary" id="go" data-t="Play">Play</button></div>
+  <p class="hint" data-t="Radio stream addresses (mp3/aac stream) or a direct audio file link.">Radio stream addresses (mp3/aac stream) or a direct audio file link.</p>
+  <h4 data-t="Recently played">Recently played</h4>
+  <div id="recent"></div>
 <script>
-  // Bunker plugin penceresi: durum panelden gelir ({bunker:"state"}), islemler panele gider ({bunker:"action"})
+  // Bunker plugin window: state comes from the panel ({bunker:"state"}), actions go to the panel ({bunker:"action"}).
+  // The panel doesn't translate plugin pages: texts are English, Turkish comes from TR by ctx.lang.
+  const TR = {
+    "Nothing is playing": "Bir şey çalmıyor", "Paste a stream address below": "Aşağıya bir yayın adresi yapıştır", "Volume": "Ses", "Play": "Çal",
+    "https://… stream or audio link": "https://… yayın ya da ses bağlantısı", "Radio stream addresses (mp3/aac stream) or a direct audio file link.": "Radyo yayın adresleri (mp3/aac akışı) ya da doğrudan ses dosyası bağlantısı.",
+    "Recently played": "Son çalınanlar", "None yet.": "Henüz yok.", "Paused · {by}": "Duraklatıldı · {by}", "Playing · {by}": "Çalıyor · {by}", "Connecting…": "Bağlanıyor…",
+    "Resume": "Devam", "Pause": "Duraklat", "Stop and leave the channel": "Durdur ve kanaldan çık", "Remove from the list": "Listeden çıkar",
+  };
+  let LANG = "en";
+  const t = (s, vars) => { let out = LANG === "tr" ? TR[s] ?? s : s; if (vars) out = out.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? "")); return out; };
+  function applyLang() {
+    for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
+    for (const el of document.querySelectorAll("[data-t-ph]")) el.placeholder = t(el.dataset.tPh);
+    document.documentElement.lang = LANG;
+  }
   const $ = (id) => document.getElementById(id);
   const act = (name, data) => parent.postMessage({ bunker: "action", name, data }, "*");
   const ICON = {
@@ -66,28 +80,28 @@
   function render(st) {
     const n = st?.now;
     $("disc").classList.toggle("on", Boolean(n?.playing && !n.paused));
-    $("title").textContent = n ? n.label : "Bir şey çalmıyor";
+    $("title").textContent = n ? n.label : t("Nothing is playing");
     const sub = $("sub");
     sub.className = n?.error ? "err" : "";
-    sub.textContent = !n ? "Aşağıya bir yayın adresi yapıştır" : n.error ? n.error : n.paused ? "Duraklatıldı · " + n.by : n.playing ? "Çalıyor · " + n.by : "Bağlanıyor…";
+    sub.textContent = !n ? t("Paste a stream address below") : n.error ? n.error : n.paused ? t("Paused · {by}", { by: n.by }) : n.playing ? t("Playing · {by}", { by: n.by }) : t("Connecting…");
     const b = $("btns");
     b.replaceChildren();
     if (n) {
-      b.append(n.paused ? btn("play", "Devam", () => act("resume")) : btn("pause", "Duraklat", () => act("pause")));
-      b.append(btn("stop", "Durdur ve kanaldan çık", () => act("stop")));
+      b.append(n.paused ? btn("play", t("Resume"), () => act("resume")) : btn("pause", t("Pause"), () => act("pause")));
+      b.append(btn("stop", t("Stop and leave the channel"), () => act("stop")));
     }
     $("volrow").hidden = !n;
-    if (n && !dragging) { $("vol").value = n.volume; $("volv").textContent = "%" + n.volume; }
+    if (n && !dragging) { $("vol").value = n.volume; $("volv").textContent = n.volume + "%"; }
     const r = $("recent");
     r.replaceChildren();
     const list = st?.recent ?? [];
-    if (!list.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Henüz yok."; r.append(e); }
+    if (!list.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = t("None yet."); r.append(e); }
     for (const it of list) {
       const row = document.createElement("div");
       row.className = "item";
       row.title = it.url;
       const s = document.createElement("span"); s.textContent = it.label;
-      const x = btn("x", "Listeden çıkar", (e) => { e.stopPropagation(); act("forget", { url: it.url }); });
+      const x = btn("x", t("Remove from the list"), (e) => { e.stopPropagation(); act("forget", { url: it.url }); });
       row.append(s, x);
       row.onclick = () => act("play", { url: it.url });
       r.append(row);
@@ -96,19 +110,21 @@
   window.addEventListener("message", (e) => {
     const m = e.data;
     if (e.source !== parent || !m || m.bunker !== "state") return;
-    const t = m.ctx?.theme;
-    if (t) for (const k of ["bg", "text", "muted", "accent", "border", "hover"]) if (t[k]) document.documentElement.style.setProperty("--" + k, t[k]);
+    const lang = m.ctx?.lang === "tr" ? "tr" : "en";
+    if (lang !== LANG) { LANG = lang; applyLang(); }
+    const th = m.ctx?.theme;
+    if (th) for (const k of ["bg", "text", "muted", "accent", "border", "hover"]) if (th[k]) document.documentElement.style.setProperty("--" + k, th[k]);
     render(m.state);
-    // Hic durum yoksa (son calinanlar icin) bir kez sor
+    // No state at all yet (for the recent list): ask once
     if (!m.state && !asked) { asked = true; act("hello"); }
   });
-  // Izole cercevede form gonderme kapali (submit olayi hic gelmez): tiklama + Enter
+  // Forms don't submit in the isolated frame (no submit event at all): click + Enter
   const play = () => { const v = $("url").value.trim(); if (v) act("play", { url: v }); $("url").value = ""; };
   $("go").onclick = play;
   $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); play(); } });
   $("vol").oninput = () => {
     dragging = true;
-    $("volv").textContent = "%" + $("vol").value;
+    $("volv").textContent = $("vol").value + "%";
     clearTimeout(volTimer);
     volTimer = setTimeout(() => { act("volume", { v: Number($("vol").value) }); dragging = false; }, 150);
   };

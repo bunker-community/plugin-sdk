@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.7
+- Languages: `CommandCall.lang` and `ctx.serverLang(gid)` (the server's language, for chat messages), `UiAction.lang` and the page's `ctx.lang` (the viewer's panel language).
+
 ## 0.1.6
 - Manifest `details`: long description shown in the Store detail view (up to 4000 characters).
 

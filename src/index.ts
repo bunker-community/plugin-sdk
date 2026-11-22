@@ -1,15 +1,15 @@
 /*
- * @bunker-community/plugin-sdk: Bunker plugin'i yazmak icin gereken her sey.
+ * @bunker-community/plugin-sdk: everything needed to write a Bunker plugin.
  *
  *   import { definePlugin } from "@bunker-community/plugin-sdk";
  *   export default definePlugin({
  *     setup(ctx) {
- *       ctx.command("merhaba", (c) => c.reply(`Merhaba ${c.nick}!`));
+ *       ctx.command("hello", (c) => c.reply(`Hello ${c.nick}!`));
  *     },
  *   });
  *
- * Plugin klasoru: bunker-plugin.json (manifest) + giris dosyasi (varsayilan src/index.ts).
- * Uzak plugin (kendi bilgisayarinda calisir): connect(plugin, { token }) — bkz. remote.ts, API_DOC.md.
+ * Plugin folder: bunker-plugin.json (manifest) + entry file (default src/index.ts).
+ * Remote plugin (runs on your own computer): connect(plugin, { token }) — see remote.ts, API_DOC.md.
  */
 import type { PluginDefinition } from "./types.ts";
 
@@ -18,7 +18,7 @@ export * from "./manifest.ts";
 export * from "./version.ts";
 export * from "./remote.ts";
 
-/** Tip yardimcisi: plugin tanimini oldugu gibi dondurur */
+/** Type helper: returns the plugin definition as is */
 export function definePlugin(def: PluginDefinition): PluginDefinition {
   return def;
 }

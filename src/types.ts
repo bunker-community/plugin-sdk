@@ -1,103 +1,103 @@
 /*
- * Bunker plugin API'sinin genel tipleri.
+ * Public types of the Bunker plugin API.
  *
- * Plugin cekirdegin ic modullerini (chat.ts, voice.ts...) hic gormez: sadece buradaki tipler ve
- * calisma ortaminin verdigi PluginContext. Olay verileri cekirdekten kopyalanir; plugin degistirse de
- * cekirdek etkilenmez.
+ * A plugin never sees the core's internal modules (chat.ts, voice.ts...): only the types here and
+ * the PluginContext the runtime provides. Event data is copied from the core; even if the plugin changes it
+ * the core is not affected.
  *
- * Geriye uyumluluk: alan EKLENEBILIR, silinmez/yeniden adlandirilmaz. Kiran degisiklik SDK_VERSION'in
- * ana (major) surumunu artirir.
+ * Backward compatibility: fields CAN be added, never removed/renamed. A breaking change bumps the major
+ * version of SDK_VERSION.
  */
 
-/** Plugin'in isteyebilecegi izinler. Manifest'te yazilmayan izin gerektiren cagri hata verir. */
+/** Permissions a plugin can ask for. A call that needs a permission missing from the manifest throws. */
 export type Permission =
-  /** message.* olaylari + ctx.command */
+  /** message.* events + ctx.command */
   | "events.messages"
-  /** voice.* olaylari */
+  /** voice.* events */
   | "events.voice"
-  /** member.*, guild.* olaylari */
+  /** member.*, guild.* events */
   | "events.members"
-  /** channel.* olaylari */
+  /** channel.* events */
   | "events.channels"
   /** user.online / user.offline */
   | "events.presence"
-  /** Metin kanalina plugin'in kendi adiyla mesaj yazma */
+  /** Writing to text channels under the plugin's own name */
   | "chat.send"
-  /** Plugin'e ozel anahtar-deger deposu */
+  /** Key-value store private to the plugin */
   | "storage"
-  /** Ses kanalina katilip ses calma (ctx.voice) */
+  /** Joining voice channels and playing audio (ctx.voice) */
   | "voice.speak";
 
 export const PERMISSIONS: readonly Permission[] = [
   "events.messages", "events.voice", "events.members", "events.channels", "events.presence", "chat.send", "storage", "voice.speak",
 ];
 
-/** Sunucuya eklerken sunucu sahibine gosterilen aciklama (onay ekrani) */
+/** Description shown to the server owner when adding to a server (approval screen) */
 export const PERMISSION_TEXT: Record<Permission, string> = {
-  "events.messages": "Metin kanallarındaki mesajları okur, komutlara cevap verir",
-  "events.voice": "Ses kanallarına kimin girip çıktığını görür",
-  "events.members": "Sunucuya katılan ve ayrılan üyeleri görür",
-  "events.channels": "Kanalların açılmasını, değişmesini ve silinmesini görür",
-  "events.presence": "Üyelerin çevrimiçi olup olmadığını görür",
-  "chat.send": "Metin kanallarına kendi adıyla mesaj yazar",
-  "storage": "Kendi verilerini Bunker'da saklar",
-  "voice.speak": "Ses kanallarına katılır ve ses çalar",
+  "events.messages": "Reads messages in text channels and replies to commands",
+  "events.voice": "Sees who joins and leaves voice channels",
+  "events.members": "Sees members joining and leaving the server",
+  "events.channels": "Sees channels being created, changed and deleted",
+  "events.presence": "Sees whether members are online",
+  "chat.send": "Posts messages in text channels under its own name",
+  "storage": "Stores its own data on Bunker",
+  "voice.speak": "Joins voice channels and plays audio",
 };
 
-/** Plugin'in panelde gosterdigi pencere (manifest "ui"). Sayfa izole bir cercevede (iframe, sandbox) acilir. */
+/** The window the plugin shows in the panel (manifest "ui"). The page opens in an isolated frame (iframe, sandbox). */
 export interface PluginUi {
-  /** Pencere basligi */
+  /** Window title */
   title: string;
-  /** Sol alttaki ikon: panelin ikon adlarindan biri (or. "music", "radio", "tv"); yoksa "plug" */
+  /** Icon at the bottom left: one of the panel's icon names (e.g. "music", "radio", "tv"); "plug" otherwise */
   icon?: string;
-  /** Pencere sayfasi (plugin klasorune gore), or. "ui/index.html". Tek dosya olmasi onerilir (satir ici script/stil). */
+  /** Window page (relative to the plugin folder), e.g. "ui/index.html". A single file is recommended (inline script/style). */
   page: string;
-  /** "voice": sadece o sunucunun bir ses kanalindayken gorunur (durum kanal basina); "guild": sunucuda her zaman */
+  /** "voice": only visible while in a voice channel of that server (state per channel); "guild": always on the server */
   scope: "voice" | "guild";
 }
 
 /** bunker-plugin.json */
 export interface PluginManifest {
-  /** Kucuk harf, rakam, tire: 2-28 karakter. Plugin'in kalici kimligi (depo, ayarlar, bot kimligi buna bagli). */
+  /** Lowercase letters, digits, dashes: 2-28 characters. The plugin's permanent identity (storage, settings, bot identity depend on it). */
   id: string;
-  /** Gorunen ad (mesajlarda bot adi olarak da kullanilir) */
+  /** Display name (also used as the bot name in messages) */
   name: string;
-  /** Plugin surumu (x.y.z) */
+  /** Plugin version (x.y.z) */
   version: string;
   /** Short description (at most 300 characters), shown on Store cards. */
   description?: string;
   /** Long description (at most 4000 characters, plain text; blank lines start a new paragraph), shown in the Store detail view. */
   details?: string;
   author?: string;
-  /** Sunucu tarafi giris dosyasi (plugin klasorune gore), varsayilan "src/index.ts" */
+  /** Server-side entry file (relative to the plugin folder), default "src/index.ts" */
   main?: string;
-  /** Uyumlu SDK ana surumu, or. "0" ya da "0.1" */
+  /** Compatible SDK major version, e.g. "0" or "0.1" */
   sdk: string;
   permissions: Permission[];
-  /** Panel penceresi (istege bagli) */
+  /** Panel window (optional) */
   ui?: PluginUi;
 }
 
 // ---------------------------------------------------------------- olaylar
 
-/** Mesajin plugin'e acilan hali */
+/** The message as exposed to the plugin */
 export interface PluginMessage {
   id: string;
   ts: number;
   uid: string;
   nick: string;
   text: string;
-  /** Sistem satiri ("... sabitledi" gibi) */
+  /** System line (like "... pinned") */
   system: boolean;
-  /** Bot ya da plugin yazdi */
+  /** Written by a bot or plugin */
   bot: boolean;
-  /** Ek sayisi (gorsel/video) */
+  /** Number of attachments (image/video) */
   attachments: number;
   replyTo?: string;
   edited?: number;
 }
 
-/** Metin kanali ya da ozel mesaj. Ozel mesaj olaylari plugin'lere su an GONDERILMEZ (gizlilik). */
+/** Text channel or direct message. Direct message events are currently NOT sent to plugins (privacy). */
 export type MessageWhere = { scope: "text"; gid: string; chan: string };
 export type VoiceWhere = { gid: string; cid: string; uid: string; bot: boolean };
 
@@ -118,14 +118,14 @@ export interface PluginEvents {
   "voice.join": VoiceWhere;
   "voice.move": VoiceWhere & { from: string };
   "voice.leave": VoiceWhere;
-  /** Plugin bu sunucuya eklendi (izin gerekmez) */
+  /** The plugin was added to this server (no permission needed) */
   "guild.install": { gid: string; by: string };
-  /** Plugin bu sunucudan cikarildi ya da sunucu silindi (izin gerekmez); sunucuya ait verini burada temizle */
+  /** The plugin was removed from this server or the server was deleted (no permission needed); clean up your data for the server here */
   "guild.uninstall": { gid: string };
 }
 export type PluginEventName = keyof PluginEvents;
 
-/** Olay -> gereken izin (null: izin gerekmez) */
+/** Event -> required permission (null: no permission needed) */
 export const EVENT_PERMISSION: Record<PluginEventName, Permission | null> = {
   "user.online": "events.presence",
   "user.offline": "events.presence",
@@ -147,23 +147,28 @@ export const EVENT_PERMISSION: Record<PluginEventName, Permission | null> = {
   "guild.uninstall": null,
 };
 
-// ---------------------------------------------------------------- calisma ortaminin verdigi arayuz
+// ---------------------------------------------------------------- the interface the runtime provides
 
 export type Awaitable<T> = T | Promise<T>;
 
-/** "!komut arguman..." cagrisi (sadece metin kanallarinda, insan yazdiginda) */
+/** Languages Bunker supports */
+export type Lang = "en" | "tr";
+
+/** A "!command args..." call (text channels only, when a human writes) */
 export interface CommandCall {
   gid: string;
   chan: string;
-  /** Yazan */
+  /** The writer */
   uid: string;
   nick: string;
-  /** Komuttan sonraki metin (bosluklar kirpilmis) */
+  /** The text after the command (spaces trimmed) */
   args: string;
   m: PluginMessage;
-  /** Yazanin bu sunucuda sunucu ayarlari yetkisi var mi (server.manage / yonetici) */
+  /** Does the writer have the server settings permission on this server (server.manage / admin) */
   manage: boolean;
-  /** Ayni kanala plugin adiyla cevap (chat.send izni gerekir) */
+  /** The server's language (Server settings -> Language). Write replies in it: chat messages are not translated per viewer. */
+  lang: Lang;
+  /** Reply in the same channel under the plugin's name (needs the chat.send permission) */
   reply(text: string): Promise<void>;
 }
 
@@ -173,7 +178,7 @@ export interface PluginLogger {
   error(msg: string, ctx?: Record<string, unknown>): void;
 }
 
-/** Plugin'e ozel kalici depo (deger JSON, en fazla 64 KB; plugin basina en fazla 10 000 anahtar) */
+/** Persistent store private to the plugin (JSON values, at most 64 KB; at most 10,000 keys per plugin) */
 export interface PluginStorage {
   get<T = unknown>(key: string): Promise<T | undefined>;
   set(key: string, value: unknown): Promise<void>;
@@ -181,108 +186,113 @@ export interface PluginStorage {
   keys(prefix?: string): Promise<string[]>;
 }
 
-// ---------------------------------------------------------------- ses (voice.speak)
-/** Plugin'in bir ses kanalindaki oturumu. Kanalda insan kalmazsa 60 sn sonra kendiliginden ayrilir. */
+// ---------------------------------------------------------------- voice (voice.speak)
+/** The plugin's session in a voice channel. Leaves on its own 60 s after no humans are left in the channel. */
 export interface VoiceSession {
   readonly gid: string;
   readonly cid: string;
-  /** Su an ses akiyor mu (duraklatilmis olsa da true) */
+  /** Is audio flowing right now (true even if paused) */
   readonly playing: boolean;
   readonly paused: boolean;
   /** 0-100 */
   readonly volume: number;
-  /** Oturum acik mi (ayrildiysa false; yeni oturum icin voice.join) */
+  /** Is the session open (false after leaving; voice.join for a new session) */
   readonly connected: boolean;
-  /** 48 kHz, stereo, 16 bit (little-endian) ham PCM akisini cal; caldigini durdurur */
+  /** Play a 48 kHz, stereo, 16-bit (little-endian) raw PCM stream; stops what is playing */
   playPcm(stream: AsyncIterable<Uint8Array>): void;
-  /** http(s) ses adresini cal (radyo yayini, mp3...); cekirdek ffmpeg ile cozer. seek: saniye */
+  /** Play an http(s) audio address (radio stream, mp3...); the core decodes it with ffmpeg. seek: seconds */
   playUrl(url: string, opts?: { seek?: number }): Promise<void>;
   /**
-   * Sarki cal: YouTube / SoundCloud baglantisi, radyo yayini ya da arama metni (YouTube'da aranir, engellenirse
-   * SoundCloud). Cekirdek yt-dlp ile cozer; bilgi "meta" olayiyla gelir.
+   * Play a song: a YouTube / SoundCloud link, a radio stream or a search text (searched on YouTube, SoundCloud if
+   * blocked). The core decodes it with yt-dlp; the info arrives with the "meta" event.
    */
   playMedia(query: string, opts?: { seek?: number }): Promise<void>;
-  /** Siradakini onceden coz (gecis hizlansin); 30 dk gecerli */
+  /** Decode the next one in advance (faster transition); valid for 30 min */
   prefetch(query: string): void;
   stop(): void;
   pause(): void;
   resume(): void;
   setVolume(v: number): void;
-  /** Kanaldan ayril */
+  /** Leave the channel */
   leave(): Promise<void>;
-  /** started: ilk ses gitti; ended: akis bitti; error: calinamadi; leave: kanaldan ayrildi (neden) */
+  /** started: the first audio went out; ended: the stream ended; error: could not play; leave: left the channel (reason) */
   on(ev: "started" | "ended", fn: () => Awaitable<void>): () => void;
   on(ev: "error", fn: (why: string, info: { silent: boolean }) => Awaitable<void>): () => void;
   on(ev: "leave", fn: (why: string) => Awaitable<void>): () => void;
-  /** playMedia: sarki bilgisi */
+  /** playMedia: song info */
   on(ev: "meta", fn: (m: MediaMeta) => Awaitable<void>): () => void;
 }
-/** playMedia ile calan sarkinin bilgisi (silent hatalar: YouTube engeli vb., kullaniciya gostermek sart degil) */
+/** Info of the song playing via playMedia (silent errors: YouTube block etc., no need to show them to the user) */
 export interface MediaMeta { title: string; artist: string; duration: number; thumb: string; src: string; url: string }
 
-// ---------------------------------------------------------------- panel penceresi (manifest "ui")
-/** Panel penceresinde yapilan islem (sayfa { bunker: "action", name, data } gonderdi) */
+// ---------------------------------------------------------------- panel window (manifest "ui")
+/** An action in the panel window (the page sent { bunker: "action", name, data }) */
 export interface UiAction {
   gid: string;
-  /** scope "voice" ise kisinin bulundugu ses kanali */
+  /** the voice channel the person is in if scope is "voice" */
   cid?: string;
   uid: string;
   nick: string;
   name: string;
   data: unknown;
-  /** Islemi yapanin bu sunucuda sunucu ayarlari yetkisi var mi */
+  /** Does the person doing the action have the server settings permission on this server */
   manage: boolean;
+  /** The person's panel language (for texts you send only to them with ctx.ui.send) */
+  lang: Lang;
 }
 /**
- * Pencere sayfasiyla konusma (window.postMessage):
- *   sayfa -> panel: { bunker: "ready" } | { bunker: "action", name, data } | { bunker: "close" }
- *   panel -> sayfa: { bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, manage, age, theme: { dark, bg, text, muted, accent, border, hover } } }
- *                 | { bunker: "message", data }   (ctx.ui.send ile sadece bu kisiye)
- *   age: durum kac ms once uretildi (ayni durum tekrar gonderilebilir; sure/ilerleme sayan sayfa bunu ekler)
- *   manage: bakan kisinin sunucu ayarlari yetkisi var mi (sadece gosterim icin; asil denetim UiAction.manage)
- * Sayfa ag istegi yapamaz (CSP); her sey durum + islemlerle olur.
+ * Talking to the window page (window.postMessage):
+ *   page -> panel: { bunker: "ready" } | { bunker: "action", name, data } | { bunker: "close" }
+ *   panel -> page: { bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, manage, age, lang, theme: { dark, bg, text, muted, accent, border, hover } } }
+ *                 | { bunker: "message", data }   (only to this person, via ctx.ui.send)
+ *   age: how many ms ago the state was produced (the same state may be sent again; a page counting time/progress adds it)
+ *   manage: does the viewer have the server settings permission (display only; the real check is UiAction.manage)
+ *   lang: the viewer's panel language ("en" | "tr"); the panel doesn't translate pages, so pick your texts by it
+ * The page can't make network requests (CSP); everything happens through state + actions.
  */
 export type UiPageMessage = { bunker: "ready" } | { bunker: "action"; name: string; data?: unknown } | { bunker: "close" };
 
 export interface PluginContext {
   readonly manifest: Readonly<PluginManifest>;
   readonly log: PluginLogger;
-  /** Olay dinle (izin gerekir). Donen fonksiyon dinlemeyi birakir; plugin kapaninca hepsi kendiliginden birakilir. */
+  /** Listen to an event (needs the permission). The returned function stops listening; all are released when the plugin stops. */
   on<K extends PluginEventName>(name: K, fn: (payload: PluginEvents[K]) => Awaitable<void>): () => void;
-  /** "!ad" komutu (events.messages izni). Ad kucuk harfe cevrilir, "!" yazilmaz. */
+  /** A "!name" command (events.messages permission). The name is lowercased, written without "!". */
   command(name: string, fn: (call: CommandCall) => Awaitable<void>): () => void;
   readonly chat: {
-    /** Metin kanalina plugin adiyla mesaj (chat.send). Plugin'in ekli olmadigi sunucuya yazamaz. */
+    /** Message to a text channel under the plugin's name (chat.send). Can't write to a server the plugin isn't added to. */
     send(chan: string, text: string): Promise<{ id: string } | null>;
   };
   readonly storage: PluginStorage;
+  /** A server's language (Server settings -> Language): write messages to that server in it. "en" if the plugin isn't added there. */
+  serverLang(gid: string): Promise<Lang>;
   readonly voice: {
-    /** Ses kanalina katil (voice.speak). Plugin bu kanalin sunucusuna ekli olmali. Zaten oradaysa ayni oturum doner. */
+    /** Join a voice channel (voice.speak). The plugin must be added to that channel's server. Returns the same session if already there. */
     join(cid: string): Promise<VoiceSession>;
-    /** Acik oturum (yoksa null) */
+    /** Open session (null if none) */
     session(cid: string): VoiceSession | null;
-    /** Kisinin su an bulundugu ses kanali (voice.speak ya da events.voice). Plugin'in ekli olmadigi sunucudaysa null. */
+    /** The voice channel the person is in right now (voice.speak or events.voice). null if on a server the plugin isn't added to. */
     channelOf(uid: string): Promise<{ gid: string; cid: string } | null>;
   };
   readonly ui: {
     /**
-     * Pencerenin durumu (manifest "ui" gerekir): JSON, en fazla 32 KB. Sunucudaki herkese (scope "voice" ise
-     * cid verilir, o kanalin penceresi) anlik gider. live: sol alttaki ikon yansin (or. calarken). null = temizle.
+     * The window's state (needs manifest "ui"): JSON, at most 32 KB. Goes live to everyone on the server (for scope "voice"
+     * cid is given, that channel's window). live: light up the icon at the bottom left (e.g. while playing). null = clear.
      */
     setState(where: { gid: string; cid?: string }, state: unknown, opts?: { live?: boolean }): void;
-    /** Pencerede yapilan islem */
+    /** An action in the window */
     onAction(fn: (a: UiAction) => Awaitable<void>): () => void;
     /**
-     * Sadece bir kisinin acik penceresine veri (sayfaya { bunker: "message", data } olarak gider): ornegin bir islemin
-     * cevabi. JSON, en fazla 128 KB. Kisinin o pencereyi acmamissa kaybolur.
+     * Data to only one person's open window (goes to the page as { bunker: "message", data }): e.g. the reply to an
+     * action. JSON, at most 128 KB. Lost if the person doesn't have that window open.
      */
     send(uid: string, where: { gid: string; cid?: string }, data: unknown): void;
   };
-  /** Plugin kapanirken calisacak temizlik */
+  /** Cleanup to run when the plugin stops */
   onUnload(fn: () => Awaitable<void>): void;
 }
 
 export interface PluginDefinition {
-  /** Plugin acilinca bir kez cagrilir. Dinleyicileri burada kur. */
+  /** Called once when the plugin starts. Set up listeners here. */
   setup(ctx: PluginContext): Awaitable<void>;
 }
