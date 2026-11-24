@@ -15,7 +15,7 @@
  */
 import fs from "node:fs";
 import { errorText, t, UserError } from "./text.ts";
-import { definePlugin, type CommandCall, type MediaMeta, type PluginContext, type UiAction, type VoiceSession } from "@bunker-community/plugin-sdk";
+import { definePlugin, type CommandCall, type CommandOptions, type MediaMeta, type PluginContext, type UiAction, type VoiceSession } from "@bunker-community/plugin-sdk";
 
 const MAX_QUEUE = 50;
 const DEFAULT_VOLUME = 10;
@@ -116,7 +116,7 @@ export default definePlugin({
         queue: c.queue.map((t) => ({ title: t.title, byNick: t.byNick })),
         volume: c.volume, paused: Boolean(c.pausedAt), playing: Boolean(c.startedAt), elapsed: Math.max(0, Math.round(elapsedOf(c) * 10) / 10),
         connecting: c.connecting, notice: c.notice, lists: lastLists.get(c.gid) ?? [], max: MAX_QUEUE,
-      }, { live: Boolean(n) });
+      }, { live: Boolean(n), label: n?.title ?? "" });
     }
     async function pushIdle(gid: string, cid: string, notice = "") {
       const lv = await listView(gid);
@@ -332,6 +332,19 @@ export default definePlugin({
 
     // ---------------------------------------------------------------- chat commands
     type Cmd = (c: CommandCall, chan: Chan | undefined, cid: string) => Promise<string | void>;
+    /** Descriptions for the panel's command list (only the first, English name; the aliases show when typed) */
+    const INFO: Record<string, CommandOptions> = {
+      music: { description: "All music commands", tr: { description: "Tüm müzik komutları" } },
+      play: { description: "Play a song or add it to the queue", usage: "<song or link>", tr: { description: "Şarkı çal ya da sıraya ekle", usage: "<şarkı ya da bağlantı>" } },
+      list: { description: "Play a playlist (20 shuffled songs)", usage: "<list name>", tr: { description: "Çalma listesini çal (karışık 20 şarkı)", usage: "<liste adı>" } },
+      pause: { description: "Pause the music", tr: { description: "Müziği duraklat" } },
+      resume: { description: "Resume the music", tr: { description: "Müziğe devam et" } },
+      skip: { description: "Skip to the next song", tr: { description: "Sonraki şarkıya geç" } },
+      stop: { description: "Stop the bot and clear the queue", tr: { description: "Botu durdur, sırayı temizle" } },
+      vol: { description: "Set the volume", usage: "<0-100>", tr: { description: "Ses seviyesini ayarla" } },
+      queue: { description: "Show the queue", tr: { description: "Sırayı göster" } },
+      np: { description: "What is playing now", tr: { description: "Şu an çalan şarkı" } },
+    };
     function cmd(names: string[], fn: Cmd, voiceRequired = true) {
       for (const n of names) {
         ctx.command(n, async (c) => {
@@ -349,7 +362,7 @@ export default definePlugin({
           } catch (e) {
             await reply(errorText(e, c.lang));
           }
-        });
+        }, n === names[0] ? INFO[n] : undefined);
       }
     }
     // English names first; the Turkish ones are aliases people already use

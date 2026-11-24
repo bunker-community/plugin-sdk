@@ -1,0 +1,18 @@
+{
+  "id": "watch",
+  "name": "Watch Together",
+  "version": "1.0.0",
+  "description": "Watch YouTube, Twitch, Vimeo, a video link or a file together in a voice channel, in sync: play, pause and seeking apply to everyone.",
+  "details": "Paste a link while you're in a voice channel and the video opens for everyone in that channel at the same time, in the big area where the chat is. Play, pause, seeking and the queue are shared; volume is just yours.\n\nSources: YouTube videos and live streams, Twitch past broadcasts and live channels, Vimeo, direct video links (.mp4, .webm, .m3u8) and files on your own computer. A file isn't sent to anyone: everyone picks their own copy of the same file and Watch Together keeps playback in sync.\n\nOpen it from the TV icon at the bottom left while you're in a voice channel. Add videos to the queue and they play in order. When everyone leaves the channel, watching ends.\n\nProtected services like Netflix or Disney+ can't be embedded; use screen sharing for those.",
+  "author": "Bunker",
+  "sdk": "0.1",
+  "permissions": ["events.voice", "storage", "ui.embed"],
+  "ui": {
+    "title": "Watch together",
+    "icon": "tv",
+    "page": "ui/index.html",
+    "scope": "voice",
+    "layout": "stage",
+    "embed": ["https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.twitch.tv", "https://player.vimeo.com"]
+  }
+}

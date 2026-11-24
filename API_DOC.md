@@ -1,6 +1,6 @@
 # Bunker Plugin Developer Guide and API Reference
 
-SDK `@bunker-community/plugin-sdk` 0.1.7
+SDK `@bunker-community/plugin-sdk` 0.1.9
 
 This document is for people who want to write plugins (bots) for Bunker: what is required, how to upload, and which
 functions are available.
@@ -75,6 +75,8 @@ A plugin that doesn't follow these rules is rejected or won't run.
 | `details` | no | Long description, at most 4000 characters of plain text (a blank line starts a new paragraph). Shown when someone opens your plugin in the Store: what it does, how to use it, its commands. |
 | `author` | no | At most 80 characters. |
 | `ui` | no | Panel window ([Window](#window-ctxui)). |
+| `network` | no | Hosts `ctx.http.fetch` may reach: `["api.example.com", "*.example.org"]`, at most 16 (needs `net.fetch`). Shown to the server owner. |
+| `settings` | no | Per-server settings the server owner fills in ([Settings](#settings-ctxsettings)). |
 | `id` | — | Don't set it: the plugin id (`ext-xxxxxxxx`) is assigned when you create the plugin on Bunker. |
 
 ### Code
@@ -111,6 +113,10 @@ An action without permission throws.
 | `events.members` | Sees members joining and leaving the server | `member.*`, `guild.create/delete` |
 | `events.channels` | Sees channels being created, changed and deleted | `channel.*` |
 | `events.presence` | Sees whether members are online | `user.online/offline` |
+| `ui.embed` | Shows content from other websites in its window (like video players) | manifest `ui.embed` |
+| `guild.read` | Sees the server's channels, roles and member list | `ctx.guild` |
+| `net.fetch` | Connects to outside services on the internet (only the addresses it lists) | `ctx.http.fetch` (manifest `network`) |
+| `webhooks` | Receives notifications from outside services (webhooks) | `ctx.webhooks` |
 
 `ctx.log`, `ctx.ui` and the `guild.install/uninstall` events need no permission. If an update **adds a new
 permission**, the plugin stops on every server it is installed on until that server's owner approves it again.
@@ -251,12 +257,18 @@ Returns the definition as is (a typing helper). This is the code file's `export 
 | `ctx.manifest` | — | Validated manifest (read-only). |
 | `ctx.log.info/warn/error(message, extra?)` | — | Logging (the error line under Settings → Developer and Bunker's logs). |
 | `ctx.on(event, fn)` | per event | Listen to an event; the returned function stops listening. |
-| `ctx.command(name, fn)` | `events.messages` | `!name` command; the returned function removes it. |
-| `ctx.chat.send(channel, text)` | `chat.send` | Message to a text channel. |
+| `ctx.command(name, fn, opts?)` | `events.messages` | `!name` command; the returned function removes it. `opts`: description for the command list. |
+| `ctx.chat.send(channel, text, opts?)` | `chat.send` | Message to a text channel; `opts.buttons`: buttons under it. |
+| `ctx.chat.onButton(fn)` | `chat.send` | A button under one of your messages was clicked. |
+| `ctx.guild.*` | `guild.read` | Server details, channels, roles, members. |
+| `ctx.http.fetch(url, req?)` | `net.fetch` | Request to an outside service. |
+| `ctx.webhooks.*` | `webhooks` | Incoming webhook addresses. |
+| `ctx.settings.get(gid)` | — (manifest `settings`) | The server's settings for your plugin. |
 | `ctx.storage` | `storage` | Persistent key-value storage. |
 | `ctx.serverLang(gid)` | — | The server's language, `Promise<"en" \| "tr">` (Server settings → Language). |
 | `ctx.voice.join(cid)` / `ctx.voice.session(cid)` | `voice.speak` | Voice channel session. |
 | `ctx.voice.channelOf(uid)` | `voice.speak` or `events.voice` | Which voice channel a user is in: `Promise<{ gid, cid } \| null>` (null if not in a voice channel of a server you were added to). |
+| `ctx.voice.members(cid)` | `voice.speak` or `events.voice` | Who is in a voice channel: `Promise<{ uid, nick, bot }[]>` (`[]` for a channel of a server you weren't added to). |
 | `ctx.ui.setState(...)` / `ctx.ui.onAction(fn)` / `ctx.ui.send(...)` | — (manifest `ui`) | Panel window. |
 | `ctx.onUnload(fn)` | — | Cleanup on shutdown. |
 
@@ -282,6 +294,7 @@ ctx.on("member.join", (e) => ctx.log.info("new member", { gid: e.gid, uid: e.uid
 | `user.online` / `user.offline` | `{ uid }` (if a member of a server you were added to) | `events.presence` |
 | `guild.install` | `{ gid, by }`: the plugin was added to this server | — |
 | `guild.uninstall` | `{ gid }`: removed, or the server was deleted; **delete that server's data here** | — |
+| `settings.change` | `{ gid, values }`: the server owner saved your settings (all values, defaults filled in) | — |
 
 ```ts
 interface PluginMessage {
@@ -305,6 +318,13 @@ ctx.command("hello", (c) => c.reply(`Hello ${c.nick}!`));
 - Name: letters, digits, `_`, `-`; 1-32 characters; written without `!`; lowercased.
 - Triggered only in text channels and only when a **human** writes it.
 - Bunker's own commands (`!play`, `!skip`, `!rank`, `!bug`…) and names taken by another plugin can't be used.
+- `opts` (optional): `{ description?, usage?, tr?: { description?, usage? } }`. While someone types `!` in a channel the
+  panel lists your commands with this description (Turkish from `tr` for Turkish users). Commands without a
+  description only show once the person starts typing their name, so give aliases no description.
+
+```js
+ctx.command("weather", handler, { description: "Today's weather", usage: "<city>", tr: { description: "Bugünün hava durumu", usage: "<şehir>" } });
+```
 
 ```ts
 interface CommandCall {
@@ -313,9 +333,13 @@ interface CommandCall {
   m: PluginMessage;
   manage: boolean;                    // the writer has server settings permission on this server
   lang: "en" | "tr";                  // the server's language: write your reply in it
-  reply(text: string): Promise<void>; // to the same channel (needs chat.send)
+  reply(text: string, opts?: { ephemeral?: boolean; buttons?: MessageButton[] }): Promise<void>; // to the same channel (needs chat.send)
 }
 ```
+
+`reply(text, { ephemeral: true })`: only the person who wrote the command sees the reply ("Only you can see this").
+It isn't stored and disappears when they reload: good for help texts, errors and private results. Ephemeral replies
+can only carry link buttons.
 
 ### Messages: `ctx.chat.send(channel, text)`
 
@@ -323,7 +347,150 @@ interface CommandCall {
 const r = await ctx.chat.send(chanId, "Hello!"); // { id } | null
 ```
 Only to text channels of servers you were added to; shown under the bot's name with a BOT tag. At most 10 messages
-per 10 s per server. Text at most 1800 characters (longer is cut). Mentions: `<@uid>`.
+per 10 s per server. Text at most 1024 characters (longer is cut). Mentions: `<@uid>`.
+
+**Buttons.** Put up to 10 buttons under a message; a click reaches your `ctx.chat.onButton` handler:
+
+```js
+await ctx.chat.send(chan, "Pizza tonight? (0 votes)", { buttons: [
+  { id: "yes", label: "Yes", style: "success" },
+  { id: "no", label: "No", style: "danger" },
+  { url: "https://example.com/menu", label: "Menu" },     // link button: opens the address, doesn't reach you
+] });
+
+const votes = new Map();
+ctx.chat.onButton(async (b) => {
+  votes.set(b.uid, b.id);
+  const yes = [...votes.values()].filter((v) => v === "yes").length;
+  await b.update({ text: `Pizza tonight? (${yes} yes, ${votes.size - yes} no)` });
+  await b.reply(b.userLang === "tr" ? "Oyun kaydedildi" : "Vote saved", { ephemeral: true });
+});
+```
+
+| Button field | Rule |
+|---|---|
+| `id` | 1-40 characters (letters, digits, `_ . : -`), unique in the message. What `b.id` is on click. |
+| `label` | 1-40 characters. |
+| `style` | `"primary"`, `"secondary"` (default), `"success"`, `"danger"`. |
+| `disabled` | `true`: shown but can't be clicked. |
+| `url` | Instead of `id`: an `https` link button. |
+
+```ts
+interface ButtonClick {
+  gid: string; chan: string; msgId: string;   // the message the button is under
+  id: string;                                  // the button's id
+  uid: string; nick: string; manage: boolean;
+  lang: "en" | "tr";                           // the server's language (messages to the channel)
+  userLang: "en" | "tr";                       // the clicker's panel language (ephemeral replies)
+  reply(text: string, opts?: { ephemeral?: boolean; buttons?: MessageButton[] }): Promise<void>;
+  update(p: { text?: string; buttons?: MessageButton[] }): Promise<void>; // change this message; buttons: [] removes them
+}
+```
+
+`update` only changes the message whose button was clicked, within 15 minutes of the click; the message doesn't get an
+"edited" mark. Bunker checks the person is a member of the server and limits clicks to 10 per 10 s per person.
+Keep your counts in `ctx.storage` if they must survive a restart.
+
+### Server details: `ctx.guild`
+
+Needs `guild.read`; only servers you were added to (otherwise `null` / `[]`).
+
+| Function | Returns |
+|---|---|
+| `info(gid)` | `{ id, name, owner, members, lang, created }` or `null` |
+| `channels(gid)` | `[{ id, kind: "text" \| "voice", name, parent? }]` |
+| `roles(gid)` | `[{ id, name, color, position, admin }]` |
+| `members(gid)` | `[{ uid, nick, roles: [roleId], online, bot, joined? }]` (at most 5000) |
+| `member(gid, uid)` | one member or `null` |
+
+```js
+const m = await ctx.guild.member(c.gid, c.uid);
+const roles = await ctx.guild.roles(c.gid);
+await c.reply(`${m.nick}: ${m.roles.map((id) => roles.find((r) => r.id === id)?.name).join(", ") || "no roles"}`, { ephemeral: true });
+```
+
+### Outside requests: `ctx.http`
+
+Needs `net.fetch` and the hosts in the manifest's `network` (`"api.example.com"` or `"*.example.com"`; the server owner
+sees them when adding the plugin). Plugins hosted on Bunker can't use `fetch`; this is their way out.
+
+```js
+const r = await ctx.http.fetch("https://api.example.com/v1/weather?city=Izmir", { headers: { authorization: "Bearer …" } });
+if (r.ok) await c.reply(`${r.json().temp} °C`);
+```
+
+| `req` field | Rule |
+|---|---|
+| `method` | `GET` (default), `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` |
+| `headers` | object of strings (`cookie`, `host` and connection headers are dropped) |
+| `body` | text, ≤256 KB (`JSON.stringify` yourself and set `content-type`) |
+| `timeout` | ms, 1000-15000 (default 10000) |
+
+Returns `{ status, ok, headers, body, json() }` (body as text, ≤2 MB). Only `https`, host names (no IP addresses);
+addresses that resolve to private networks are refused; redirects are not followed (you get the 3xx and its
+`location`). 60 requests per minute.
+
+### Webhooks: `ctx.webhooks`
+
+Needs `webhooks`. An address per server that outside services (GitHub, CI, stores…) post to. The address is shown
+only when it is created, so give it to the server admin right away (an ephemeral reply is ideal):
+
+```js
+ctx.command("github", async (c) => {
+  if (!c.manage) return c.reply("Only server admins can do this.", { ephemeral: true });
+  const h = await ctx.webhooks.create(c.gid, "GitHub");
+  await ctx.storage.set(`hook:${h.id}`, { chan: c.chan });
+  await c.reply(`Add this as a webhook in your GitHub repository: ${h.url}`, { ephemeral: true });
+});
+
+ctx.webhooks.onRequest(async (r) => {
+  const where = await ctx.storage.get(`hook:${r.hookId}`);
+  const e = JSON.parse(r.body);
+  if (where && r.headers["x-github-event"] === "push") await ctx.chat.send(where.chan, `New push to ${e.repository.full_name}`);
+});
+```
+
+| Function | Description |
+|---|---|
+| `create(gid, name)` | `{ id, gid, name, created, url }`; at most 10 per server. |
+| `list(gid)` | `[{ id, gid, name, created }]` (no address: it can't be shown again). |
+| `delete(id)` | The address stops working. |
+| `onRequest(fn)` | `fn({ hookId, gid, name, method, headers, query, body })` |
+
+The sender gets `202 Accepted` right away (it can't receive your answer). `GET`, `POST`, `PUT`, `PATCH`; body ≤256 KB as
+raw text (verify signatures such as GitHub's `x-hub-signature-256` over it); 30 calls per minute per address. When the
+plugin is removed from a server its addresses there stop working.
+
+### Settings: `ctx.settings`
+
+Declare settings in the manifest; the server owner fills them in under Server settings → Plugins → **Settings**.
+Bunker validates the values (a channel must be a channel of that server, a number within `min`/`max`…).
+
+```json
+"settings": [
+  { "key": "channel", "type": "channel", "label": "Announcement channel", "tr": { "label": "Duyuru kanalı" } },
+  { "key": "prefix", "type": "text", "label": "Greeting", "default": "Hello", "maxLength": 50 },
+  { "key": "level", "type": "select", "label": "Level", "options": [{ "value": "low", "label": "Low" }, { "value": "high", "label": "High" }] },
+  { "key": "pings", "type": "boolean", "label": "Mention people", "default": false },
+  { "key": "limit", "type": "number", "label": "Daily limit", "min": 1, "max": 100, "default": 10 }
+]
+```
+
+| Field | Rule |
+|---|---|
+| `key` | letters, digits, `_` (1-32), unique |
+| `type` | `text`, `number`, `boolean`, `select`, `channel` (`voice: true` for a voice channel), `role` |
+| `label` / `description` | English (≤60 / ≤200); `tr: { label, description, options: { value: "Türkçe" } }` for Turkish |
+| `default` | of the field's type; otherwise empty / `false` / `min` / the first option |
+| `options` | `select` only: `[{ value, label }]` |
+| `min` / `max` / `maxLength` | `number` / `text` |
+
+```js
+const s = await ctx.settings.get(gid);   // { channel: "…", prefix: "Hello", level: "low", pings: false, limit: 10 }
+ctx.on("settings.change", ({ gid, values }) => { /* saved */ });
+```
+
+At most 20 fields. Settings are deleted when the plugin is removed from the server. Store your own data in `ctx.storage`.
 
 ### Storage: `ctx.storage`
 
@@ -387,6 +554,8 @@ A plugin can show an icon in the plugin group at the bottom left of the panel, a
 | `icon` | Icon name (below); default `plug`. |
 | `page` | The window page `.html` (select it too when uploading). |
 | `scope` | `"guild"`: always visible on the server, state per server. `"voice"`: only while in one of that server's voice channels, state **per channel**. |
+| `layout` | `"window"` (default): a window over the panel. `"stage"`: the page fills the big area where the chat is, like a video call or a screen share (players, games). The user hides it with the icon or when the page sends `{ bunker: "close" }`. |
+| `embed` | Other websites your page may embed (frames and their scripts), as https origins: `["https://www.youtube.com", "https://*.vimeo.com"]`, at most 16. Needs the `ui.embed` permission. |
 
 Icons: `music radio tv gamepad play pause skip shuffle list volume mic headphones monitor screen camera video live
 clock bell crown smile message hash pin users user gear plug store compass shield key palette keyboard search check
@@ -401,7 +570,7 @@ plugin ◀── ctx.ui.onAction ── panel ◀── {bunker:"action"} ──
 
 | Function | Description |
 |---|---|
-| `ctx.ui.setState({ gid, cid? }, state, { live? })` | Sends the state to everyone on that server (in that channel for scope `voice`); people opening it later get the latest state too. JSON, ≤32 KB. `live: true` → the icon lights up. `null` → clear. Kept in memory. |
+| `ctx.ui.setState({ gid, cid? }, state, { live?, label?, open? })` | Sends the state to everyone on that server (in that channel for scope `voice`); people opening it later get the latest state too. JSON, ≤32 KB. `live: true` → the icon lights up; for scope `voice` your icon also shows next to the channel in the channel list, with `label` (≤100 characters, e.g. the song or video title) as its tooltip. `open: true` → opens the window for the people it applies to right now (e.g. when a video starts; at most once per 10 s per channel). `null` → clear (an open stage closes). Kept in memory. |
 | `ctx.ui.onAction(fn)` | `fn({ gid, cid?, uid, nick, name, data, manage, lang })` (`manage`: the user has server settings permission; `lang`: their panel language). Bunker checks the user is a member (and in the channel for scope `voice`); ≤10 per second per user, `data` ≤4 KB. Still validate `data`. |
 
 ```js
@@ -437,7 +606,7 @@ Page (`ui.html`):
 | Direction | Message |
 |---|---|
 | page → panel | `{ bunker: "ready" }` · `{ bunker: "action", name, data? }` · `{ bunker: "close" }` |
-| panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, manage, age, lang, theme: { dark, bg, text, muted, accent, border, hover } } }` |
+| panel → page | `{ bunker: "state", state, ctx: { gid, cid, me: { uid, nick }, manage, age, lang, stage, theme: { dark, bg, text, muted, accent, border, hover } } }` |
 
 Plus `{ bunker: "message", data }`: data sent only to this user with `ctx.ui.send(uid, { gid, cid? }, data)` (e.g. the
 result of an action, or an error). `ctx.manage`: whether the viewer has server settings permission (for showing
@@ -448,8 +617,11 @@ buttons only; check `UiAction.manage` in the plugin).
 `ctx.age`: how many ms ago the plugin produced this state. The same state may be sent again (e.g. when the window is
 reopened), so a page that shows elapsed time (a progress bar) should add `age` instead of assuming the state is fresh.
 
-Page rules: opens in an isolated frame (no access to the panel's cookies or data); no network requests; a single file
-with inline scripts and styles; images may be `https:` or `data:`; take colors from `ctx.theme`. **Forms don't submit**
+Page rules: opens in an isolated frame served from a separate address for plugin content (no access to the panel's
+cookies or data); no network requests (`fetch`, WebSocket); a single file with inline scripts and styles; images and
+`<video>`/`<audio>` may be `https:`, `data:` or `blob:` (a file the user picks); frames and scripts only from the
+origins in `ui.embed`; take colors from `ctx.theme`. `localStorage` works but is shared by all plugin pages: prefix
+your keys with your plugin's name. Full screen works (`document.documentElement.requestFullscreen()`). **Forms don't submit**
 in the isolated frame (the `submit` event never fires): don't rely on `<form onsubmit>`; handle the button's `click` and
 the input's `keydown` (Enter) yourself.
 
@@ -482,7 +654,11 @@ one is approved. Abusive plugins are disabled.
 | Plugins per person | 5 |
 | Plugins per server | 25 |
 | Error budget | 10 errors in 60 s → plugin stops |
-| `chat.send` | 10 messages per 10 s per server, ≤1800 characters |
+| `chat.send` | 10 messages per 10 s per server (replies included), ≤1024 characters, ≤10 buttons |
+| Buttons | 10 clicks per 10 s per person; `update` within 15 minutes of the click |
+| `http.fetch` | 60 per minute, body ≤256 KB, response ≤2 MB, ≤15 s |
+| Webhooks | 10 per server, 30 calls per minute each, body ≤256 KB |
+| Settings | 20 fields |
 | Storage | value ≤64 KB, ≤10,000 keys, key ≤200 characters |
 | Window | state ≤32 KB; actions 10 per second per user, `data` ≤4 KB |
 | Voice | 12 sessions across Bunker |
@@ -498,6 +674,9 @@ Common errors:
 | `!x is a Bunker command and can't be taken` / `!x is registered by another plugin (…)` | Command name taken; pick another. |
 | `value is at most 64 KB` / `state is at most 32 KB` | Value / state too large; split it. |
 | `plugin is off` | The old `ctx` was used after the plugin stopped (stop timers in `onUnload`). |
+| `x is not in "network" in bunker-plugin.json` | Add the host to `network`. |
+| `this address can't be reached` | The host resolves to a private network. |
+| `update is only possible within 15 minutes of the click` | Send a new message instead. |
 | `A plugin hosted on Bunker cannot use this: …` | Forbidden module or action (internet, files…). |
 
 ---
@@ -527,7 +706,7 @@ message, ~30 calls per second.
 
 **Hello** (first message, within 10 s) and reply:
 ```json
-{ "op": "hello", "token": "ext-…", "sdk": "0.1.7", "manifest": { "name": "…", "version": "1.0.0", "sdk": "0.1", "permissions": [] }, "uiPage": "<!doctype html>…" }
+{ "op": "hello", "token": "ext-…", "sdk": "0.1.9", "manifest": { "name": "…", "version": "1.0.0", "sdk": "0.1", "permissions": [] }, "uiPage": "<!doctype html>…" }
 { "op": "ready", "v": 1, "sdk": "0.1.6", "manifest": { "…": "…" }, "guilds": [{ "gid": "…", "name": "…" }] }
 ```
 
@@ -539,16 +718,26 @@ message, ~30 calls per second.
 
 | method | args | value |
 |---|---|---|
-| `subscribe` / `unsubscribe` | `[event]` (event names + `"ui.action"`) | — |
+| `subscribe` / `unsubscribe` | `[event]` (event names + `"ui.action"`, `"chat.button"`, `"webhook.request"`) | — |
 | `command` / `uncommand` | `[name]` | — |
 | `chat.send` | `[channel, text]` | `{ id }` or `null` |
 | `storage.get` | `[key]` | value or `null` |
 | `storage.set` | `[key, value]` | — |
 | `storage.delete` | `[key]` | — |
 | `storage.keys` | `[prefix]` | `string[]` |
-| `ui.setState` | `[{ gid, cid? }, state, { live? }]` | — |
+| `ui.setState` | `[{ gid, cid? }, state, { live?, label?, open? }]` | — |
 | `voice.join` / `voice.session` | `[cid]` | session state |
 | `voice.channelOf` | `[uid]` | `{ gid, cid }` or `null` |
+| `voice.members` | `[cid]` | `[{ uid, nick, bot }]` |
+| `command` | `[name, opts?]` (opts: description, usage, tr) | — |
+| `chat.send` | `[channel, text, { buttons? }]` | `{ id }` or `null` |
+| `interaction.reply` | `[token, text, { ephemeral?, buttons? }]` (token from a `command` call or a `chat.button` event) | — |
+| `interaction.update` | `[token, { text?, buttons? }]` (button clicks only) | — |
+| `guild.info` / `guild.channels` / `guild.roles` / `guild.members` | `[gid]` | as in `ctx.guild` |
+| `guild.member` | `[gid, uid]` | member or `null` |
+| `http.fetch` | `[url, req]` | `{ status, headers, body }` |
+| `webhooks.create` / `webhooks.list` / `webhooks.delete` | `[gid, name]` / `[gid]` / `[id]` | as in `ctx.webhooks` |
+| `settings.get` | `[gid]` | values |
 | `ui.send` | `[uid, { gid, cid? }, data]` | — |
 | `voice.call` | `[cid, action, args[]]` (`playUrl playMedia prefetch stop pause resume setVolume leave`) | session state |
 | `log` | `["info" / "warn" / "error", message, extra?]` | — |
@@ -559,15 +748,20 @@ Session state: `{ gid, cid, playing, paused, volume, connected }`.
 **From the server:**
 ```json
 { "op": "event", "name": "member.join", "data": { "gid": "…", "uid": "…" } }
-{ "op": "command", "name": "roll", "call": { "gid": "…", "chan": "…", "uid": "…", "nick": "…", "args": "20", "m": { "…": "…" } } }
+{ "op": "command", "name": "roll", "call": { "gid": "…", "chan": "…", "uid": "…", "nick": "…", "args": "20", "m": { "…": "…" }, "token": "…" } }
+{ "op": "event", "name": "chat.button", "data": { "gid": "…", "chan": "…", "msgId": "…", "id": "yes", "uid": "…", "token": "…" } }
 { "op": "voice", "cid": "…", "ev": "started", "args": [], "state": { "…": "…" } }
 ```
-To reply to a command, `chat.send` to `call.chan`. Subscriptions are dropped when the connection closes; send them
+To reply to a command, `interaction.reply` with `call.token` (or `chat.send` to `call.chan`); a button click is answered
+with the event's `token` (`interaction.reply` / `interaction.update`). Tokens are valid for 15 minutes. Subscriptions are dropped when the connection closes; send them
 again after reconnecting.
 
 **Close codes:** 4001 invalid / regenerated token · 4002 malformed message · 4003 plugin disabled or deleted · 4004
 another connection with the same token, or the plugin is running on Bunker · 4005 invalid manifest (reason in
 `reason`) · 4008 too fast or not reading messages. Reconnect on any other close.
+
+An IP address that sends 10 invalid tokens within 10 minutes is refused for 15 minutes: the WebSocket upgrade
+answers HTTP 429 with a `Retry-After` header. Don't retry after 4001.
 
 ---
 
@@ -577,6 +771,8 @@ another connection with the same token, or the plugin is running on Bunker · 40
 
 | Version | Change |
 |---|---|
+| 0.1.9 | Buttons under messages (`chat.send` `buttons`, `ctx.chat.onButton`, `update`), ephemeral replies, command descriptions (`ctx.command` opts), `ctx.guild` (`guild.read`), `ctx.http.fetch` (`net.fetch` + manifest `network`), `ctx.webhooks` (`webhooks`), manifest `settings` + `ctx.settings` + `settings.change` |
+| 0.1.8 | Window `layout: "stage"`, `ui.embed` + permission `ui.embed` (embedded players), `setState` `label` / `open`, `ctx.voice.members`, page `ctx.stage` |
 | 0.1.7 | Languages: `CommandCall.lang`, `ctx.serverLang(gid)`, `UiAction.lang`, page `ctx.lang` |
 | 0.1.6 | Manifest `details` (long description for the Store detail view) |
 | 0.1.5 | `ctx.voice.channelOf`, `ctx.ui.send` (data to one user's window), `manage` in `CommandCall` / `UiAction` / page `ctx` |

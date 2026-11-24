@@ -13,7 +13,9 @@
  *            | { op: "event", name, data } | { op: "command", name, call } | { op: "voice", cid, ev, args, state }
  */
 import type {
-  CommandCall, MediaMeta, PluginContext, PluginDefinition, PluginEventName, PluginEvents, PluginManifest, UiAction, VoiceSession,
+  ButtonClick, CommandCall, CommandOptions, GuildChannel, GuildInfo, GuildMember, GuildRole, HttpRequest, HttpResponse, MediaMeta, MessageButton,
+  PluginContext, PluginDefinition, PluginEventName, PluginEvents, PluginManifest, ReplyOptions, SendOptions, UiAction, VoiceMember, VoiceSession,
+  WebhookInfo, WebhookRequest,
 } from "./types.ts";
 import { SDK_VERSION as SDK } from "./version.ts";
 export const DEFAULT_GATEWAY = "wss://bunker.community/app/api/plugin/gateway";
@@ -82,7 +84,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
   let manifest: PluginManifest | null = null;
   const pending = new Map<number, Pending>();
   const events = new Map<string, Set<(p: unknown) => unknown>>();
-  const commands = new Map<string, (c: CommandCall) => unknown>();
+  const commands = new Map<string, { fn: (c: CommandCall) => unknown; opts: CommandOptions }>();
   const unloaders: (() => unknown)[] = [];
   const sessions = new Map<string, RemoteSession>();
   let readyResolve!: () => void, readyReject!: (e: Error) => void;
@@ -125,7 +127,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
 
   function resubscribe() {
     for (const name of events.keys()) fire("subscribe", name);
-    for (const name of commands.keys()) fire("command", name);
+    for (const [name, c] of commands) fire("command", name, c.opts);
   }
 
   const ctx: PluginContext = {
@@ -142,14 +144,49 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
       set.add(f);
       return () => { set!.delete(f); if (!set!.size) { events.delete(name); if (open) fire("unsubscribe", name); } };
     },
-    command(name: string, fn: (c: CommandCall) => unknown) {
+    command(name: string, fn: (c: CommandCall) => unknown, opts?: CommandOptions) {
       const n = String(name).replace(/^!/, "").toLocaleLowerCase("tr");
       if (commands.has(n)) throw new Error(`!${n} is already registered`);
-      commands.set(n, fn);
-      if (open) fire("command", n);
+      commands.set(n, { fn, opts: opts ?? {} });
+      if (open) fire("command", n, opts ?? {});
       return () => { commands.delete(n); if (open) fire("uncommand", n); };
     },
-    chat: { send: (chan, text) => call("chat.send", chan, text) },
+    chat: {
+      send: (chan: string, text: string, opts?: SendOptions) => call("chat.send", chan, text, opts ?? {}),
+      // A click arrives with a token; reply / update go back through it
+      onButton(fn: (b: ButtonClick) => unknown) {
+        return ctx.on("chat.button" as PluginEventName, ((d: Omit<ButtonClick, "reply" | "update"> & { token: string }) => {
+          const { token, ...rest } = d;
+          return fn({
+            ...rest,
+            reply: (text: string, o?: ReplyOptions) => call("interaction.reply", token, text, o ?? {}).then(() => {}),
+            update: (u: { text?: string; buttons?: MessageButton[] }) => call("interaction.update", token, u ?? {}).then(() => {}),
+          });
+        }) as never);
+      },
+    },
+    guild: {
+      info: (gid: string) => call<GuildInfo | null>("guild.info", gid),
+      channels: (gid: string) => call<GuildChannel[]>("guild.channels", gid),
+      roles: (gid: string) => call<GuildRole[]>("guild.roles", gid),
+      members: (gid: string) => call<GuildMember[]>("guild.members", gid),
+      member: (gid: string, uid: string) => call<GuildMember | null>("guild.member", gid, uid),
+    },
+    http: {
+      async fetch(url: string, req?: HttpRequest): Promise<HttpResponse> {
+        const r = await call<{ status: number; headers: Record<string, string>; body: string }>("http.fetch", url, req ?? {});
+        return { ...r, ok: r.status >= 200 && r.status < 300, json: <T>() => JSON.parse(r.body) as T };
+      },
+    },
+    webhooks: {
+      create: (gid: string, name: string) => call<WebhookInfo & { url: string }>("webhooks.create", gid, name),
+      list: (gid: string) => call<WebhookInfo[]>("webhooks.list", gid),
+      delete: (id: string) => call("webhooks.delete", id).then(() => {}),
+      onRequest(fn: (r: WebhookRequest) => unknown) { return ctx.on("webhook.request" as PluginEventName, fn as never); },
+    },
+    settings: {
+      get: (gid: string) => call<Record<string, unknown>>("settings.get", gid).then((v) => v ?? {}),
+    },
     storage: {
       get: <T>(key: string) => call<T | undefined>("storage.get", key).then((v) => (v === null ? undefined : v)),
       set: (key, value) => call("storage.set", key, value).then(() => {}),
@@ -161,6 +198,7 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
       async join(cid: string) { return sessionFor(await call<SessionState>("voice.join", cid)); },
       session(cid: string) { return sessions.get(cid) ?? null; },
       channelOf: (uid: string) => call<{ gid: string; cid: string } | null>("voice.channelOf", uid),
+      members: (cid: string) => call<VoiceMember[]>("voice.members", cid).then((v) => (Array.isArray(v) ? v : [])),
     },
     ui: {
       setState: (where, state, o) => fire("ui.setState", where, state, o ?? {}),
@@ -204,9 +242,9 @@ export function connect(def: PluginDefinition, opts: ConnectOptions): Connection
         for (const fn of [...(events.get(m.name) ?? [])]) safe(m.name, () => fn(m.data));
         return;
       case "command": {
-        const fn = commands.get(m.name);
-        const c = m.call;
-        if (fn) safe("!" + m.name, () => fn({ ...c, lang: c.lang === "tr" ? "tr" : "en", reply: async (text: string) => { await call("chat.send", c.chan, text); } }));
+        const fn = commands.get(m.name)?.fn;
+        const { token, ...c } = m.call;
+        if (fn) safe("!" + m.name, () => fn({ ...c, lang: c.lang === "tr" ? "tr" : "en", reply: async (text: string, o?: ReplyOptions) => { await call("interaction.reply", token, text, o ?? {}); } }));
         return;
       }
       case "voice": {

@@ -7,6 +7,6 @@
     "local": "node local.js"
   },
   "dependencies": {
-    "@bunker-community/plugin-sdk": "^0.1.7"
+    "@bunker-community/plugin-sdk": "^0.1.9"
   }
 }

@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch together</title>
+<style>
+  :root { --bg: #2c2d33; --text: #dbdee1; --muted: #949ba4; --accent: #6c6cff; --border: rgba(255,255,255,.08); --hover: rgba(255,255,255,.06); --panel: #232429; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  svg { width: 18px; height: 18px; flex: none; }
+  input[type=text] { min-width: 0; height: 38px; border-radius: 8px; border: 1px solid var(--border); background: var(--hover); color: var(--text); padding: 0 12px; font: inherit; }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  .btn { height: 38px; padding: 0 16px; border-radius: 8px; background: var(--hover); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .btn:hover { filter: brightness(1.25); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.sm { height: 30px; padding: 0 10px; font-size: 13px; }
+  .linkbtn { color: var(--muted); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; }
+  .linkbtn:hover { color: var(--text); background: var(--hover); }
+
+  /* ---- start screen */
+  #empty { height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .start { width: min(560px, 100%); text-align: center; }
+  .start .logo { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; display: grid; place-items: center; background: var(--hover); color: var(--accent); }
+  .start .logo svg { width: 30px; height: 30px; }
+  .start h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+  .start p { margin: 0 0 20px; color: var(--muted); }
+  .start .row { display: flex; gap: 8px; }
+  .start .row input { flex: 1; }
+  .srcs { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 14px; margin: 14px 0 6px; color: var(--muted); font-size: 12px; }
+  .srcs span { display: inline-flex; align-items: center; gap: 5px; }
+  .srcs svg { width: 14px; height: 14px; }
+  .start .fine { margin-top: 18px; font-size: 12px; color: var(--muted); }
+
+  /* ---- player */
+  #player { height: 100%; display: flex; }
+  .main { position: relative; flex: 1; min-width: 0; background: #000; overflow: hidden; }
+  #box { position: absolute; inset: 0; }
+  #box > iframe, #box > div, #box > video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  #box > video { object-fit: contain; background: #000; }
+  .shield { position: absolute; inset: 0; z-index: 1; cursor: pointer; }
+  .main.native .shield { display: none; }
+  body.idle .main { cursor: none; }
+  .top, .bottom { position: absolute; left: 0; right: 0; z-index: 3; color: #fff; transition: opacity .25s; }
+  body.idle .top, body.idle .bottom { opacity: 0; pointer-events: none; }
+  .main.native .top { pointer-events: none; }
+  .main.native .top > * { pointer-events: auto; }
+  .top { top: 0; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 36px; background: linear-gradient(rgba(0,0,0,.7), transparent); }
+  .top .meta { flex: 1; min-width: 0; }
+  .top .title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .top .sub { font-size: 12px; opacity: .75; display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .pill { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 1px 6px; border-radius: 4px; background: #e5383b; color: #fff; }
+  .ibtn { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+  .ibtn:hover { background: rgba(255,255,255,.14); }
+  .ibtn.on { color: var(--accent); }
+  .top .acts { display: flex; gap: 2px; align-items: center; }
+  .stopbtn { height: 30px; padding: 0 12px; border-radius: 15px; font-size: 12px; color: #fff; background: rgba(255,255,255,.12); }
+  .stopbtn:hover { background: rgba(229,56,59,.85); }
+  .stopbtn.confirm { background: #e5383b; }
+  .bottom { bottom: 0; padding: 40px 12px 8px; background: linear-gradient(transparent, rgba(0,0,0,.75)); }
+  .seek { position: relative; height: 16px; margin: 0 4px; cursor: pointer; display: flex; align-items: center; }
+  .seek .rail { position: relative; flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.25); transition: height .15s; }
+  .seek:hover .rail { height: 6px; }
+  .seek .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
+  .seek .knob { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; transform: scale(0); transition: transform .15s; }
+  .seek:hover .knob, .seek.drag .knob { transform: scale(1); }
+  .seek .tip { position: absolute; bottom: 18px; transform: translateX(-50%); font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,.8); pointer-events: none; font-variant-numeric: tabular-nums; }
+  .ctl { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+  .ctl .time { font-size: 12px; font-variant-numeric: tabular-nums; opacity: .9; margin: 0 8px; white-space: nowrap; }
+  .ctl .grow { flex: 1; }
+  .vol { display: flex; align-items: center; gap: 2px; }
+  .vol input { width: 0; opacity: 0; transition: width .2s, opacity .2s; accent-color: #fff; }
+  .vol:hover input, .vol input:focus { width: 90px; opacity: 1; }
+  .center { position: absolute; z-index: 2; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; color: #ddd; background: #000; }
+  .center p { margin: 0; max-width: 460px; }
+  .center b { max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; }
+  .center small { color: #999; }
+  .unmute { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 24px; background: rgba(0,0,0,.8); color: #fff; font-size: 14px; }
+  .unmute.hint { top: 70px; transform: translateX(-50%); pointer-events: none; font-size: 13px; padding: 8px 14px; }
+  .spin { width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(255,255,255,.2); border-top-color: #fff; animation: r 1s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  #toasts { position: absolute; z-index: 5; top: 64px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: max-content; max-width: 90%; }
+  .toast { padding: 7px 14px; border-radius: 18px; background: rgba(20,20,24,.88); color: #fff; font-size: 13px; animation: in .2s ease-out; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast.err { background: rgba(200,40,45,.92); }
+  @keyframes in { from { opacity: 0; transform: translateY(-6px); } }
+
+  /* ---- queue panel */
+  #queue { width: 320px; flex: none; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--border); }
+  .qhead { display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 10px 16px; }
+  .qhead h3 { margin: 0; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .qadd { padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .qadd .row { display: flex; gap: 6px; }
+  .qadd input { flex: 1; height: 34px; }
+  .qadd .btn { height: 34px; }
+  .qadd .opts { display: flex; gap: 4px; }
+  .qlist { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+  .qnow { margin: 0 8px 6px; padding: 8px; border-radius: 8px; background: var(--hover); }
+  .qlabel { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 10px 8px 6px; }
+  .qi { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; }
+  .qi:hover { background: var(--hover); }
+  .qi .th { width: 64px; height: 36px; flex: none; border-radius: 4px; background: rgba(0,0,0,.35) center / cover no-repeat; display: grid; place-items: center; color: var(--muted); }
+  .qi .th svg { width: 16px; height: 16px; }
+  .qi .tx { flex: 1; min-width: 0; }
+  .qi b { display: block; font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qi small { color: var(--muted); font-size: 11px; }
+  .qi .acts { display: flex; gap: 2px; visibility: hidden; }
+  .qi:hover .acts { visibility: visible; }
+  .qi .acts button { width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); }
+  .qi .acts button:hover { color: var(--text); background: var(--hover); }
+  .qi .acts svg { width: 15px; height: 15px; }
+  .qempty { color: var(--muted); font-size: 13px; padding: 8px; }
+  @media (max-width: 720px) { #queue { position: absolute; z-index: 6; right: 0; top: 0; bottom: 0; width: min(320px, 100%); } }
+</style>
+</head>
+<body>
+  <!-- no session: start screen -->
+  <div id="empty" hidden>
+    <div class="start">
+      <div class="logo" data-i="tv"></div>
+      <h1 data-t="Watch together">Watch together</h1>
+      <p data-t="The video plays for everyone in this channel at the same time. Play, pause and seeking apply to everyone; volume is just yours.">The video plays for everyone in this channel at the same time. Play, pause and seeking apply to everyone; volume is just yours.</p>
+      <div class="row"><input type="text" id="url" maxlength="1500" autocomplete="off" data-t-ph="Paste a YouTube, Twitch, Vimeo or video link" placeholder="Paste a YouTube, Twitch, Vimeo or video link"><button class="btn primary" id="go"><span data-i="play"></span><span data-t="Start">Start</span></button></div>
+      <div class="srcs"><span><span data-i="yt"></span>YouTube</span><span><span data-i="tw"></span>Twitch</span><span><span data-i="vm"></span>Vimeo</span><span><span data-i="link"></span>.mp4 · .webm · .m3u8</span></div>
+      <button class="linkbtn" id="pickstart"><span data-i="file"></span><span data-t="Or pick a video file from your computer">Or pick a video file from your computer</span></button>
+      <div class="fine" data-t="A file isn't sent to anyone: everyone picks their own copy of the same file. Netflix, Disney+ and similar services can't be embedded; use screen sharing for those.">A file isn't sent to anyone: everyone picks their own copy of the same file. Netflix, Disney+ and similar services can't be embedded; use screen sharing for those.</div>
+    </div>
+  </div>
+
+  <!-- session -->
+  <div id="player" hidden>
+    <div class="main" id="main">
+      <div id="box"></div>
+      <div class="shield" id="shield"></div>
+      <div id="center" class="center" hidden></div>
+      <button id="unmute" class="unmute" hidden></button>
+      <div class="top">
+        <div class="meta"><div class="title" id="title"></div><div class="sub" id="sub"></div></div>
+        <div class="acts">
+          <button class="stopbtn" id="stop" data-t="Stop for everyone">Stop for everyone</button>
+          <button class="ibtn" id="qbtn" data-t-title="Queue" title="Queue"><span data-i="list"></span></button>
+          <button class="ibtn" id="hide" data-t-title="Hide (watching continues; reopen it from the TV icon at the bottom left)" title="Hide"><span data-i="x"></span></button>
+        </div>
+      </div>
+      <div id="toasts"></div>
+      <div class="bottom" id="bottom">
+        <div class="seek" id="seek"><div class="rail"><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div><div class="tip" id="tip" hidden></div></div>
+        <div class="ctl">
+          <button class="ibtn" id="pp"></button>
+          <button class="ibtn" id="nextbtn" data-t-title="Next video" title="Next video"><span data-i="next"></span></button>
+          <div class="vol"><button class="ibtn" id="mute"></button><input type="range" id="vol" min="0" max="100" step="1" data-t-title="Volume (just for you)" title="Volume (just for you)"></div>
+          <span class="time" id="time">0:00</span>
+          <span class="grow"></span>
+          <button class="ibtn" id="full" data-t-title="Full screen (F)" title="Full screen (F)"><span data-i="full"></span></button>
+        </div>
+      </div>
+    </div>
+    <aside id="queue" hidden>
+      <div class="qhead"><h3 data-t="Queue">Queue</h3><button class="ibtn" id="qclose" style="color:var(--muted)"><span data-i="x"></span></button></div>
+      <div class="qadd">
+        <div class="row"><input type="text" id="qurl" maxlength="1500" autocomplete="off" data-t-ph="Video link" placeholder="Video link"><button class="btn primary" id="qadd" data-t="Add">Add</button></div>
+        <div class="opts"><button class="linkbtn" id="qnow"><span data-i="play"></span><span data-t="Play now">Play now</span></button><button class="linkbtn" id="qfile"><span data-i="file"></span><span data-t="Add a file">Add a file</span></button></div>
+      </div>
+      <div class="qlist" id="qlist"></div>
+    </aside>
+  </div>
+
+<script>
+"use strict";
+// Bunker plugin window (stage): state from the panel ({bunker:"state"}), actions to the panel ({bunker:"action"}),
+// errors only to me ({bunker:"message", data:{error}}). The panel doesn't translate plugin pages: texts are English,
+// Turkish comes from TR by ctx.lang. Every viewer runs their own player and follows the shared state.
+const TR = {
+  "Watch together": "Beraber izle", "Start": "Başlat", "Paste a YouTube, Twitch, Vimeo or video link": "YouTube, Twitch, Vimeo ya da video bağlantısı yapıştır",
+  "The video plays for everyone in this channel at the same time. Play, pause and seeking apply to everyone; volume is just yours.": "Video bu kanaldaki herkeste aynı anda oynar. Oynatma, duraklatma ve ileri-geri sarma herkese uygulanır; ses seviyesi sadece senin.",
+  "Or pick a video file from your computer": "Ya da bilgisayarından bir video dosyası seç",
+  "A file isn't sent to anyone: everyone picks their own copy of the same file. Netflix, Disney+ and similar services can't be embedded; use screen sharing for those.": "Dosya kimseye gönderilmez: herkes aynı dosyanın kendi kopyasını seçer. Netflix, Disney+ gibi servisler gömülemez; onlar için ekran paylaşımını kullan.",
+  "Stop for everyone": "Herkes için kapat", "Click again to stop": "Kapatmak için tekrar tıkla", "Queue": "Sıra", "Hide (watching continues; reopen it from the TV icon at the bottom left)": "Gizle (izleme sürer; sol alttaki TV simgesinden yeniden aç)",
+  "Next video": "Sonraki video", "Volume (just for you)": "Ses (sadece sen)", "Full screen (F)": "Tam ekran (F)", "Video link": "Video bağlantısı", "Add": "Ekle",
+  "Play now": "Şimdi oynat", "Add a file": "Dosya ekle", "Play (for everyone)": "Oynat (herkes için)", "Pause (for everyone)": "Duraklat (herkes için)", "Mute": "Sesi kapat", "Unmute": "Sesi aç",
+  "Now playing": "Şimdi oynuyor", "Up next · {n}": "Sıradaki · {n}", "The queue is empty. Added videos play in order after this one.": "Sıra boş. Eklenen videolar bundan sonra sırayla oynar.",
+  "Remove": "Çıkar", "LIVE": "CANLI", "Live": "Canlı", "added by {nick}": "ekleyen: {nick}", "Video": "Video", "File": "Dosya", "Video link": "Video bağlantısı",
+  "YouTube video": "YouTube videosu", "Vimeo video": "Vimeo videosu", "Twitch video": "Twitch videosu",
+  "{nick} started watching together": "{nick} beraber izlemeyi başlattı", "{nick} changed the video": "{nick} videoyu değiştirdi",
+  "{nick} added to the queue: {title}": "{nick} sıraya ekledi: {title}", "{nick} skipped to the next video": "{nick} sonraki videoya geçti",
+  "This video plays from everyone's own computer. Pick the same file:": "Bu video herkesin kendi bilgisayarından oynuyor. Aynı dosyayı seç:", "Pick the file": "Dosyayı seç",
+  "The file you picked looks different ({a}, the shared one is {b}); playing it anyway": "Seçtiğin dosya farklı görünüyor ({a}, paylaşılan {b}); yine de oynatılıyor",
+  "Click to unmute": "Sesi açmak için tıkla", "If it didn't start, click the video once (use the bar below to play/pause)": "Başlamadıysa videoya bir kez tıkla (oynat/duraklat için alttaki çubuğu kullan)",
+  "Loading…": "Yükleniyor…",
+  "This link isn't supported. Paste a YouTube, Twitch, Vimeo or direct video file (.mp4, .webm, .m3u8) link.": "Bu bağlantı desteklenmiyor. YouTube, Twitch, Vimeo ya da doğrudan video dosyası (.mp4, .webm, .m3u8) bağlantısı yapıştır.",
+  "Twitch clips aren't supported; paste a past broadcast (twitch.tv/videos/…) or a channel link.": "Twitch klipleri desteklenmiyor; geçmiş yayın (twitch.tv/videos/…) ya da kanal bağlantısı yapıştır.",
+  "Invalid file.": "Geçersiz dosya.", "The queue can hold at most 50 videos.": "Sırada en fazla 50 video olabilir.", "Nothing is being watched in this channel.": "Bu kanalda izlenen bir şey yok.", "No videos in the queue.": "Sırada video yok.",
+  "This video can't be played outside YouTube (disabled by its owner)": "Bu video YouTube dışında oynatılamıyor (sahibi kapatmış)", "Couldn't play the video": "Video oynatılamadı",
+  "Couldn't load the {name} player": "{name} oynatıcısı yüklenemedi", "This Twitch channel isn't live right now": "Bu Twitch kanalı şu an yayında değil",
+  "Couldn't open the Twitch player (the video may be deleted or private)": "Twitch oynatıcısı açılamadı (video silinmiş ya da gizli olabilir)",
+  "Couldn't open the Vimeo video (it may be private or not embeddable)": "Vimeo videosu açılamadı (gizli ya da gömülemez olabilir)", "Couldn't play the Vimeo video": "Vimeo videosu oynatılamadı",
+  "Couldn't open the video (unsupported format or unreachable link)": "Video açılamadı (desteklenmeyen biçim ya da ulaşılamayan bağlantı)", "Couldn't load the video": "Video yüklenemedi",
+  "This device can't play HLS (.m3u8) streams": "Bu cihaz HLS (.m3u8) yayınlarını oynatamıyor",
+  "Embedded players aren't available on this Bunker server yet (the plugin page address isn't set up). Video links and files still work.": "Bu Bunker sunucusunda gömülü oynatıcılar henüz kullanılamıyor (eklenti sayfası adresi ayarlanmamış). Video bağlantıları ve dosyalar yine çalışır.",
+};
+const ERR = {
+  link: "This link isn't supported. Paste a YouTube, Twitch, Vimeo or direct video file (.mp4, .webm, .m3u8) link.",
+  clip: "Twitch clips aren't supported; paste a past broadcast (twitch.tv/videos/…) or a channel link.",
+  file: "Invalid file.", full: "The queue can hold at most 50 videos.", none: "Nothing is being watched in this channel.", empty: "No videos in the queue.",
+};
+let LANG = "en";
+const t = (s, vars) => { let out = LANG === "tr" ? TR[s] ?? s : s; if (vars) out = out.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? "")); return out; };
+function applyLang() {
+  for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
+  for (const el of document.querySelectorAll("[data-t-title]")) el.title = t(el.dataset.tTitle);
+  for (const el of document.querySelectorAll("[data-t-ph]")) el.placeholder = t(el.dataset.tPh);
+  document.documentElement.lang = LANG;
+}
+
+const SV = (p, fill) => `<svg viewBox="0 0 24 24" ${fill ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'}>${p}</svg>`;
+const ICON = {
+  tv: SV('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="m17 2-5 5-5-5"/>'),
+  play: SV('<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/>', true),
+  pause: SV('<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>', true),
+  next: SV('<path d="M5 5.5v13a1 1 0 0 0 1.5.86L16 13.5v4.5a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.5L6.5 4.64A1 1 0 0 0 5 5.5Z"/>', true),
+  vol: SV('<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>'),
+  mute: SV('<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m22 9-6 6M16 9l6 6"/>'),
+  full: SV('<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>'),
+  unfull: SV('<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>'),
+  list: SV('<path d="M3 6h13M3 12h13M3 18h9M19 15v6M16 18h6"/>'),
+  x: SV('<path d="M18 6 6 18M6 6l12 12"/>'),
+  file: SV('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="m10 12 4 2.5-4 2.5Z"/>'),
+  link: SV('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
+  yt: SV('<path d="M2.5 7.1C2.7 5.6 3.9 4.5 5.4 4.4 7.6 4.2 9.8 4 12 4s4.4.2 6.6.4c1.5.1 2.7 1.2 2.9 2.7.3 1.6.5 3.3.5 4.9s-.2 3.3-.5 4.9c-.2 1.5-1.4 2.6-2.9 2.7-2.2.2-4.4.4-6.6.4s-4.4-.2-6.6-.4c-1.5-.1-2.7-1.2-2.9-2.7C2.2 15.3 2 13.6 2 12s.2-3.3.5-4.9Z"/><path d="m10 9 5 3-5 3Z"/>'),
+  tw: SV('<path d="M21 2H3v16h5v4l4-4h5l4-4V2Z"/><path d="M11 11V7M16 11V7"/>'),
+  vm: SV('<path d="M22 7.4c-.1 2-1.5 4.8-4.2 8.2C15 19.2 12.6 21 10.7 21c-1.2 0-2.3-1.1-3.1-3.4L6 11.5C5.4 9.2 4.8 8 4.1 8c-.2 0-.7.3-1.6 1L1.5 7.7l2.9-2.6c1.3-1.1 2.3-1.7 2.9-1.8 1.6-.2 2.5.9 2.9 3.2.4 2.5.7 4 .8 4.6.4 2 .9 3 1.4 3 .4 0 1.1-.7 1.9-2s1.3-2.3 1.4-3c.1-1.1-.3-1.7-1.4-1.7-.5 0-1 .1-1.5.3 1-3.3 2.9-4.9 5.7-4.8 2.1 0 3.1 1.4 3 4.1Z"/>'),
+};
+const SRC_ICON = { yt: "yt", twitch: "tw", vimeo: "vm", url: "link", file: "file" };
+for (const el of document.querySelectorAll("[data-i]")) el.innerHTML = ICON[el.dataset.i] ?? "";
+
+const $ = (id) => document.getElementById(id);
+const act = (name, data) => parent.postMessage({ bunker: "action", name, data }, "*");
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs ?? {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v; else if (k === "html") e.innerHTML = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (k === "style") e.style.cssText = v; else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+}
+const clock = (sec) => {
+  const s = Math.max(0, Math.floor(sec || 0)), hh = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60, p2 = (n) => String(n).padStart(2, "0");
+  return hh ? `${hh}:${p2(m)}:${p2(ss)}` : `${m}:${p2(ss)}`;
+};
+const sizeText = (n) => (n >= 1073741824 ? (n / 1073741824).toFixed(2) + " GB" : Math.max(1, Math.round(n / 1048576)) + " MB");
+const fileKey = (f) => `${f.size}:${String(f.name).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200)}`;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("watch." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("watch." + k, JSON.stringify(v)); } catch {} },
+};
+/** No separate plugin page origin on this server: the page is sandboxed without an origin, players inside can't run */
+const OPAQUE = location.origin === "null";
+
+// ---------------------------------------------------------------- state
+const W = {
+  st: null, rx: 0, ctx: null, first: true, lastEv: 0,
+  p: null, key: null, mounting: null, durSent: null, endSent: null, titleSent: null,
+  vol: store.get("volume", 70), muted: false, blocked: false, blockTimer: 0,
+  files: new Map(), seekDrag: false, showQueue: false, stopArm: 0,
+};
+const keyOf = (s) => (s ? s.src + "|" + s.vid : null);
+const expected = (s) => (s.playing ? s.pos + (Date.now() - W.rx) / 1000 : s.pos);
+const isLive = (s) => Boolean(s?.live) || W.p?.dur?.() === Infinity;
+const titleOf = (s) => s.title || ({ yt: t("YouTube video"), vimeo: t("Vimeo video"), twitch: t("Twitch video"), url: t("Video"), file: t("File") })[s.src];
+const srcName = (s) => ({ yt: "YouTube", twitch: "Twitch", vimeo: "Vimeo", url: t("Video link"), file: t("File") })[s] ?? "";
+
+function toast(text, err) {
+  const box = $("toasts");
+  const x = el("div", { class: "toast" + (err ? " err" : "") }, text);
+  box.append(x);
+  while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => x.remove(), err ? 6000 : 3500);
+}
+
+// ---------------------------------------------------------------- players: (box, item, start, ev) -> player
+// state(): "play" | "pause" | "buffer" | "ended" | "idle"
+const scripts = {};
+function loadScript(src, ready, name) {
+  if (ready()) return Promise.resolve();
+  if (!scripts[src]) {
+    scripts[src] = new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = src;
+      const fail = () => { delete scripts[src]; s.remove(); rej(new Error(t("Couldn't load the {name} player", { name }))); };
+      s.onload = () => (ready() ? res() : setTimeout(() => (ready() ? res() : fail()), 500));
+      s.onerror = fail;
+      document.head.append(s);
+    });
+  }
+  return scripts[src];
+}
+function ytApi() {
+  if (window.YT?.Player) return Promise.resolve();
+  if (!scripts.yt) {
+    scripts.yt = new Promise((res, rej) => {
+      window.onYouTubeIframeAPIReady = () => res();
+      const s = document.createElement("script");
+      s.src = "https://www.youtube.com/iframe_api";
+      s.onerror = () => { delete scripts.yt; s.remove(); rej(new Error(t("Couldn't load the {name} player", { name: "YouTube" }))); };
+      document.head.append(s);
+    });
+  }
+  return scripts.yt;
+}
+const frame = (src) => el("iframe", { src, allow: "autoplay; encrypted-media; picture-in-picture; fullscreen", referrerpolicy: "strict-origin-when-cross-origin" });
+const embedCheck = () => { if (OPAQUE) throw new Error(t("Embedded players aren't available on this Bunker server yet (the plugin page address isn't set up). Video links and files still work.")); };
+
+const players = {
+  async yt(box, s, start, ev) {
+    embedCheck();
+    await ytApi();
+    const ifr = frame(`https://www.youtube.com/embed/${encodeURIComponent(s.vid)}?enablejsapi=1&controls=0&disablekb=1&rel=0&playsinline=1&iv_load_policy=3&fs=0&start=${Math.floor(start)}&autoplay=${s.playing ? 1 : 0}&origin=${encodeURIComponent(location.origin)}`);
+    box.prepend(ifr);
+    let ready = false;
+    const yp = await new Promise((res) => {
+      const pl = new YT.Player(ifr, {
+        events: {
+          onReady: () => { ready = true; res(pl); },
+          onStateChange: () => ev(),
+          onError: (e) => ev("error", e?.data === 101 || e?.data === 150 || e?.data === 153 ? t("This video can't be played outside YouTube (disabled by its owner)") : t("Couldn't play the video")),
+        },
+      });
+    });
+    const ST = { "-1": "idle", 0: "ended", 1: "play", 2: "pause", 3: "buffer", 5: "idle" };
+    return {
+      get ready() { return ready; },
+      state: () => ST[yp.getPlayerState?.()] ?? "idle",
+      time: () => yp.getCurrentTime?.() ?? 0,
+      dur: () => yp.getDuration?.() ?? 0,
+      title: () => yp.getVideoData?.()?.title ?? "",
+      play: () => yp.playVideo(),
+      pause: () => yp.pauseVideo(),
+      seek: (x) => yp.seekTo(x, true),
+      vol: (v, muted) => { yp.setVolume(v); muted ? yp.mute() : yp.unMute(); },
+      destroy: () => { try { yp.destroy(); } catch {} ifr.remove(); },
+    };
+  },
+
+  async twitch(box, s, start, ev) {
+    embedCheck();
+    await loadScript("https://player.twitch.tv/js/embed/v1.js", () => Boolean(window.Twitch?.Player), "Twitch");
+    const live = s.vid.startsWith("c:");
+    const div = el("div", { id: "tw-" + Date.now() });
+    box.prepend(div);
+    const x = Math.floor(start);
+    // Twitch wants every page that embeds it: this page and the panel above it
+    const parents = [...new Set([location.hostname, ...[...(location.ancestorOrigins ?? [])].map((o) => { try { return new URL(o).hostname; } catch { return ""; } })].filter(Boolean))];
+    const tp = new Twitch.Player(div.id, {
+      width: "100%", height: "100%", parent: parents, autoplay: s.playing, muted: false,
+      ...(live ? { channel: s.vid.slice(2) } : { video: s.vid, time: `${Math.floor(x / 3600)}h${Math.floor((x % 3600) / 60)}m${x % 60}s` }),
+    });
+    div.querySelector("iframe")?.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+    let ready = false, st = "idle", offline = false;
+    tp.addEventListener(Twitch.Player.OFFLINE, () => { offline = true; ev("error", t("This Twitch channel isn't live right now")); });
+    tp.addEventListener(Twitch.Player.ONLINE, () => { offline = false; ev(); });
+    await new Promise((res, rej) => {
+      const to = setTimeout(() => rej(new Error(t("Couldn't open the Twitch player (the video may be deleted or private)"))), 15000);
+      tp.addEventListener(Twitch.Player.READY, () => { clearTimeout(to); ready = true; res(); });
+    });
+    // State from events (isPaused() is false when autoplay is blocked too). Twitch doesn't play under a cover: no shield.
+    const map = { [Twitch.Player.PLAY]: "buffer", [Twitch.Player.PLAYING]: "play", [Twitch.Player.PAUSE]: "pause", [Twitch.Player.ENDED]: "ended" };
+    for (const [e, v] of Object.entries(map)) tp.addEventListener(e, () => {
+      st = v;
+      if (v === "play" && W.blocked) { W.blocked = false; render(); }
+      ev();
+    });
+    return {
+      get ready() { return ready; },
+      state: () => (offline ? "ended" : st),
+      time: () => tp.getCurrentTime?.() ?? 0,
+      dur: () => (live ? Infinity : tp.getDuration?.() ?? 0),
+      title: () => "",
+      native: true,
+      play: () => tp.play(),
+      pause: () => tp.pause(),
+      seek: (y) => { if (!live) tp.seek(y); },
+      vol: (v, muted) => { tp.setVolume(v / 100); tp.setMuted(Boolean(muted)); },
+      destroy: () => div.remove(),
+    };
+  },
+
+  async vimeo(box, s, start, ev) {
+    embedCheck();
+    await loadScript("https://player.vimeo.com/api/player.js", () => Boolean(window.Vimeo?.Player), "Vimeo");
+    const [id, hash] = s.vid.split(":");
+    const ifr = frame(`https://player.vimeo.com/video/${encodeURIComponent(id)}?${hash ? "h=" + encodeURIComponent(hash) + "&" : ""}autoplay=0&controls=0&dnt=1&playsinline=1&title=0&byline=0&portrait=0#t=${Math.floor(start)}s`);
+    box.prepend(ifr);
+    const vp = new Vimeo.Player(ifr);
+    let ready = false, st = "idle", cur = start, dur = 0, title = "";
+    await vp.ready().catch(() => { throw new Error(t("Couldn't open the Vimeo video (it may be private or not embeddable)")); });
+    ready = true;
+    vp.getDuration().then((d) => { dur = d; }).catch(() => {});
+    vp.getVideoTitle().then((x) => { title = x || ""; }).catch(() => {});
+    vp.on("play", () => { st = "play"; ev(); });
+    vp.on("playing", () => { st = "play"; ev(); });
+    vp.on("pause", () => { st = "pause"; ev(); });
+    vp.on("ended", () => { st = "ended"; ev(); });
+    vp.on("bufferstart", () => { if (st === "play") st = "buffer"; });
+    vp.on("bufferend", () => { if (st === "buffer") st = "play"; });
+    vp.on("timeupdate", (d) => { cur = d.seconds; if (d.duration) dur = d.duration; });
+    vp.on("seeked", (d) => { cur = d.seconds; });
+    vp.on("error", (e) => { if (e?.name !== "NotAllowedError") ev("error", t("Couldn't play the Vimeo video")); });
+    return {
+      get ready() { return ready; },
+      state: () => st,
+      time: () => cur,
+      dur: () => dur,
+      title: () => title,
+      play: () => vp.play().catch(() => {}),
+      pause: () => vp.pause().catch(() => {}),
+      seek: (x) => { cur = x; vp.setCurrentTime(x).catch(() => {}); },
+      vol: (v, muted) => { vp.setVolume(v / 100).catch(() => {}); vp.setMuted(Boolean(muted)).catch(() => {}); },
+      destroy: () => { vp.destroy().catch(() => {}); ifr.remove(); },
+    };
+  },
+
+  async url(box, s, start, ev) {
+    return videoEl(box, s.vid, start, ev, /\.m3u8(\?|#|$)/i.test(s.vid));
+  },
+
+  async file(box, s, start, ev) {
+    const f = W.files.get(s.vid);
+    if (!f) throw Object.assign(new Error("no file"), { needFile: true });
+    const url = URL.createObjectURL(f);
+    const p = await videoEl(box, url, start, ev, false);
+    const d = p.destroy;
+    p.destroy = () => { d(); URL.revokeObjectURL(url); };
+    return p;
+  },
+};
+
+/** <video>: direct link, m3u8 (where the browser plays it itself), local file */
+async function videoEl(box, src, start, ev, hls) {
+  const v = el("video", { playsinline: true, preload: "auto" });
+  if (hls && !v.canPlayType("application/vnd.apple.mpegurl")) throw new Error(t("This device can't play HLS (.m3u8) streams"));
+  box.prepend(v);
+  v.src = src;
+  for (const e of ["play", "playing", "pause", "ended", "waiting", "seeked", "durationchange"]) v.addEventListener(e, () => ev());
+  v.addEventListener("error", () => ev("error", t("Couldn't open the video (unsupported format or unreachable link)")));
+  await new Promise((res, rej) => {
+    if (v.readyState >= 1) return res();
+    const to = setTimeout(() => rej(new Error(t("Couldn't load the video"))), 20000);
+    v.addEventListener("loadedmetadata", () => { clearTimeout(to); res(); }, { once: true });
+    v.addEventListener("error", () => { clearTimeout(to); rej(new Error(t("Couldn't open the video (unsupported format or unreachable link)"))); }, { once: true });
+  });
+  if (start && Number.isFinite(v.duration)) v.currentTime = start;
+  return {
+    ready: true,
+    state: () => (v.ended ? "ended" : v.paused ? "pause" : v.readyState < 3 ? "buffer" : "play"),
+    time: () => v.currentTime || 0,
+    dur: () => v.duration || 0,
+    title: () => "",
+    play: () => v.play().catch(() => {}),
+    pause: () => v.pause(),
+    seek: (x) => { if (Number.isFinite(v.duration)) v.currentTime = x; },
+    vol: (vv, muted) => { v.volume = Math.max(0, Math.min(1, vv / 100)); v.muted = Boolean(muted); },
+    destroy: () => { v.pause(); v.removeAttribute("src"); v.load(); v.remove(); },
+  };
+}
+
+// ---------------------------------------------------------------- mounting + sync
+function unmount() {
+  clearTimeout(W.blockTimer);
+  W.blockTimer = 0;
+  try { W.p?.destroy(); } catch {}
+  W.p = null;
+  W.key = null;
+  W.mounting = null;
+  W.blocked = false;
+  $("box").replaceChildren();
+}
+
+async function mount(s) {
+  const key = keyOf(s);
+  unmount();
+  W.mounting = key;
+  W.durSent = W.endSent = W.titleSent = null;
+  showCenter(el("div", { class: "spin" }));
+  const ev = (kind, msg) => {
+    if (W.mounting !== key && W.key !== key) return;
+    if (kind === "error") return toast(msg, true);
+    sync();
+    renderBar();
+  };
+  try {
+    const make = players[s.src];
+    if (!make) throw new Error(t("Couldn't play the video"));
+    const p = await make($("box"), s, expected(s), ev);
+    if (W.mounting !== key) { p.destroy(); return; } // the video changed meanwhile
+    W.p = p;
+    W.key = key;
+    W.mounting = null;
+    p.vol(W.vol, W.muted);
+    showCenter(null);
+    sync();
+    render();
+  } catch (e) {
+    if (W.mounting !== key) return;
+    W.mounting = null;
+    W.key = key; // don't retry the same video over and over
+    $("box").replaceChildren();
+    if (e.needFile) return render();
+    showCenter(el("p", null, e.message || t("Couldn't play the video")));
+  }
+}
+
+/** Apply the shared state to the player */
+function sync() {
+  const s = W.st;
+  if (!s) return;
+  if (W.key !== keyOf(s)) {
+    if (W.mounting !== keyOf(s)) mount(s);
+    return;
+  }
+  const p = W.p;
+  if (!p?.ready) return;
+  const live = isLive(s);
+  const exp = expected(s);
+  const st = p.state();
+  const cur = p.time();
+  const dur = p.dur();
+  if (!live && dur > 0 && Number.isFinite(dur) && !s.dur && W.durSent !== s.vid) { W.durSent = s.vid; act("dur", { vid: s.vid, dur }); }
+  if (!s.title && W.titleSent !== s.vid) { const tt = p.title?.(); if (tt) { W.titleSent = s.vid; act("title", { vid: s.vid, title: tt }); } }
+  if (st === "ended") {
+    if (s.playing && !live && W.endSent !== s.vid) { W.endSent = s.vid; act("end", { vid: s.vid }); }
+    return;
+  }
+  if (s.playing) {
+    if (!live && s.dur && exp >= s.dur - 0.3) return; // about to end; the plugin waits for "end"
+    if (st !== "play" && st !== "buffer") {
+      if (!live && Math.abs(cur - exp) > 1) p.seek(exp);
+      p.play();
+      // If the browser blocked autoplay with sound: start muted and show an unmute button
+      if (!W.blockTimer) W.blockTimer = setTimeout(() => {
+        W.blockTimer = 0;
+        const s2 = W.p?.state();
+        if (!W.p || !W.st?.playing || s2 === "play" || s2 === "buffer" || s2 === "ended" || W.blocked) return;
+        W.blocked = true;
+        if (!W.p.native) { W.p.vol(W.vol, true); W.p.play(); }
+        render();
+      }, 1500);
+    } else if (!live && st === "play" && Math.abs(cur - exp) > 1.5) p.seek(exp);
+  } else {
+    if (st === "play" || st === "buffer") p.pause();
+    if (!live && Math.abs(cur - s.pos) > 1) p.seek(s.pos);
+  }
+}
+
+const current = () => {
+  const s = W.st;
+  if (!s) return 0;
+  const x = W.p?.ready && W.key === keyOf(s) ? W.p.time() : null;
+  return Number.isFinite(x) ? x : expected(s);
+};
+const duration = () => { const d = W.p?.ready ? W.p.dur() : 0; return W.st?.dur || (Number.isFinite(d) ? d : 0) || 0; };
+
+function toggle() {
+  const s = W.st;
+  if (!s) return;
+  if (W.blocked) return unblock();
+  act("ctl", { op: s.playing ? "pause" : "play", pos: current() });
+}
+function unblock() {
+  W.blocked = false;
+  if (W.p?.ready) { W.p.vol(W.vol, W.muted); W.p.play(); }
+  render();
+}
+function setVol(v, muted) {
+  W.vol = v;
+  W.muted = muted;
+  if (W.blocked) { W.blocked = false; render(); }
+  store.set("volume", v);
+  if (W.p?.ready) W.p.vol(v, muted);
+  renderBar();
+}
+function fullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
+// ---------------------------------------------------------------- files
+function pickFile(onPick) {
+  const inp = el("input", { type: "file", accept: "video/*,.mkv,.mov,.m4v", style: "display:none" });
+  inp.addEventListener("change", () => { const f = inp.files?.[0]; inp.remove(); if (f) onPick(f); });
+  document.body.append(inp);
+  inp.click();
+}
+function sendFile(name) {
+  pickFile((f) => { W.files.set(fileKey(f), f); act(name, { file: { name: f.name, size: f.size } }); });
+}
+function chooseOwn(s) {
+  pickFile((f) => {
+    if (f.size !== s.size) toast(t("The file you picked looks different ({a}, the shared one is {b}); playing it anyway", { a: sizeText(f.size), b: sizeText(s.size || 0) }), true);
+    W.files.set(s.vid, f);
+    W.key = null;
+    render();
+    sync();
+  });
+}
+
+// ---------------------------------------------------------------- drawing
+function showCenter(node) {
+  const c = $("center");
+  c.hidden = !node;
+  c.replaceChildren(...(node ? [node] : []));
+}
+
+function render() {
+  const s = W.st;
+  $("empty").hidden = Boolean(s);
+  $("player").hidden = !s;
+  if (!s) { unmount(); return; }
+  const live = isLive(s);
+  $("main").classList.toggle("native", Boolean(W.p?.native));
+  $("title").textContent = titleOf(s);
+  $("title").title = titleOf(s);
+  $("sub").replaceChildren(...[
+    live ? el("span", { class: "pill" }, t("LIVE")) : null,
+    el("span", null, srcName(s.src)), el("span", null, "·"), el("span", null, t("added by {nick}", { nick: s.byNick }))].filter(Boolean));
+  $("qbtn").classList.toggle("on", W.showQueue);
+  $("nextbtn").hidden = !s.queue.length;
+  $("queue").hidden = !W.showQueue;
+  $("stop").classList.toggle("confirm", Date.now() < W.stopArm);
+  $("stop").textContent = Date.now() < W.stopArm ? t("Click again to stop") : t("Stop for everyone");
+
+  // over the video: pick your own copy of the file / unmute
+  const needFile = s.src === "file" && !W.files.has(s.vid);
+  if (needFile) {
+    showCenter(el("div", { style: "display:flex;flex-direction:column;align-items:center;gap:10px" },
+      el("p", null, t("This video plays from everyone's own computer. Pick the same file:")),
+      el("b", null, s.title), el("small", null, sizeText(s.size || 0)),
+      el("button", { class: "btn primary", onclick: () => chooseOwn(s) }, el("span", { html: ICON.file }), t("Pick the file"))));
+  } else if (W.p && !$("center").querySelector(".spin, p")) showCenter(null);
+  const um = $("unmute");
+  um.hidden = !W.blocked;
+  if (W.blocked) {
+    um.className = "unmute" + (W.p?.native ? " hint" : "");
+    um.replaceChildren(el("span", { html: W.p?.native ? ICON.play : ICON.mute }), W.p?.native ? t("If it didn't start, click the video once (use the bar below to play/pause)") : t("Click to unmute"));
+  }
+  renderQueue();
+  renderBar();
+}
+
+/** Bottom bar (every second; the seek bar isn't touched while dragging) */
+function renderBar() {
+  const s = W.st;
+  if (!s) return;
+  const live = isLive(s), cur = current(), dur = duration();
+  if (!s.playing) document.body.classList.remove("idle"); // paused: the controls stay
+  $("pp").innerHTML = s.playing ? ICON.pause : ICON.play;
+  $("pp").title = s.playing ? t("Pause (for everyone)") : t("Play (for everyone)");
+  $("mute").innerHTML = W.muted || W.vol === 0 ? ICON.mute : ICON.vol;
+  $("mute").title = W.muted || W.vol === 0 ? t("Unmute") : t("Mute");
+  const vol = $("vol");
+  if (document.activeElement !== vol) vol.value = String(W.muted ? 0 : W.vol);
+  $("full").innerHTML = document.fullscreenElement ? ICON.unfull : ICON.full;
+  $("seek").hidden = live;
+  $("time").textContent = live ? t("Live") : `${clock(cur)} / ${dur ? clock(dur) : "--:--"}`;
+  if (!live && !W.seekDrag) {
+    const pct = dur ? Math.min(100, (cur / dur) * 100) : 0;
+    $("fill").style.width = pct + "%";
+    $("knob").style.left = pct + "%";
+  }
+}
+
+function thumb(it) {
+  const th = el("div", { class: "th" });
+  if (it.src === "yt") th.style.backgroundImage = `url("https://i.ytimg.com/vi/${encodeURIComponent(it.vid)}/mqdefault.jpg")`;
+  else th.innerHTML = ICON[SRC_ICON[it.src]] ?? ICON.link;
+  return th;
+}
+function renderQueue() {
+  const s = W.st;
+  if (!s || !W.showQueue) return;
+  const list = $("qlist");
+  list.replaceChildren(
+    el("div", { class: "qlabel" }, t("Now playing")),
+    el("div", { class: "qi qnow" }, thumb(s), el("div", { class: "tx" }, el("b", { title: titleOf(s) }, titleOf(s)), el("small", null, `${srcName(s.src)} · ${s.byNick}`))),
+    el("div", { class: "qlabel" }, t("Up next · {n}", { n: s.queue.length })),
+    ...(s.queue.length
+      ? s.queue.map((q, i) => el("div", { class: "qi" }, thumb(q),
+          el("div", { class: "tx" }, el("b", { title: titleOf(q) }, titleOf(q)), el("small", null, `${srcName(q.src)} · ${q.byNick}`)),
+          el("div", { class: "acts" },
+            el("button", { title: t("Play now"), html: ICON.play, onclick: () => act("jump", { index: i }) }),
+            el("button", { title: t("Remove"), html: ICON.x, onclick: () => act("remove", { index: i }) }))))
+      : [el("div", { class: "qempty" }, t("The queue is empty. Added videos play in order after this one."))]),
+  );
+}
+
+/** A short notice for the last change someone made (not for the first state after opening) */
+function showEvent(s) {
+  const e = s?.ev;
+  if (!e || e.n === W.lastEv) return;
+  const fresh = !W.first;
+  W.lastEv = e.n;
+  if (!fresh || e.nick === W.ctx?.me?.nick) return;
+  const text = e.kind === "start" ? t("{nick} started watching together", e) : e.kind === "change" ? t("{nick} changed the video", e)
+    : e.kind === "add" ? t("{nick} added to the queue: {title}", { nick: e.nick, title: e.title || t("Video") }) : e.kind === "next" ? t("{nick} skipped to the next video", e) : "";
+  if (text) toast(text);
+}
+
+// ---------------------------------------------------------------- controls
+const startWith = (name, input) => { const v = input.value.trim(); if (!v) return; act(name, { url: v }); input.value = ""; };
+$("go").onclick = () => startWith("start", $("url"));
+$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") startWith("start", $("url")); });
+$("pickstart").onclick = () => sendFile("start");
+$("qadd").onclick = () => startWith("add", $("qurl"));
+$("qurl").addEventListener("keydown", (e) => { if (e.key === "Enter") startWith("add", $("qurl")); });
+$("qnow").onclick = () => startWith("start", $("qurl"));
+$("qfile").onclick = () => sendFile("add");
+$("qbtn").onclick = () => { W.showQueue = !W.showQueue; store.set("queueOpen", W.showQueue); render(); };
+$("qclose").onclick = () => { W.showQueue = false; store.set("queueOpen", false); render(); };
+$("hide").onclick = () => parent.postMessage({ bunker: "close" }, "*");
+$("stop").onclick = () => {
+  if (Date.now() < W.stopArm) { W.stopArm = 0; act("stop"); return; }
+  W.stopArm = Date.now() + 3000;
+  render();
+  setTimeout(render, 3100);
+};
+$("pp").onclick = toggle;
+$("nextbtn").onclick = () => act("next");
+$("full").onclick = fullscreen;
+$("shield").onclick = toggle;
+$("shield").ondblclick = fullscreen;
+$("unmute").onclick = unblock;
+$("mute").onclick = () => setVol(W.vol || 50, !W.muted && W.vol > 0);
+$("vol").addEventListener("input", (e) => setVol(Number(e.target.value), false));
+document.addEventListener("fullscreenchange", renderBar);
+
+// seek bar: drag to preview, release to seek for everyone
+{
+  const seek = $("seek");
+  const at = (e) => { const r = seek.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
+  const show = (f) => {
+    const d = duration();
+    $("fill").style.width = f * 100 + "%";
+    $("knob").style.left = f * 100 + "%";
+    $("time").textContent = `${clock(f * d)} / ${d ? clock(d) : "--:--"}`;
+  };
+  seek.addEventListener("pointermove", (e) => {
+    const d = duration(), tip = $("tip");
+    if (!d) return;
+    tip.hidden = false;
+    tip.style.left = at(e) * 100 + "%";
+    tip.textContent = clock(at(e) * d);
+    if (W.seekDrag) show(at(e));
+  });
+  seek.addEventListener("pointerleave", () => { if (!W.seekDrag) $("tip").hidden = true; });
+  seek.addEventListener("pointerdown", (e) => { if (!duration()) return; W.seekDrag = true; seek.classList.add("drag"); seek.setPointerCapture(e.pointerId); show(at(e)); });
+  seek.addEventListener("pointerup", (e) => {
+    if (!W.seekDrag) return;
+    W.seekDrag = false;
+    seek.classList.remove("drag");
+    $("tip").hidden = true;
+    act("ctl", { op: "seek", pos: at(e) * duration() });
+  });
+}
+
+// keys: space/k play-pause, f full screen, m mute, arrows ±10 s (for everyone)
+document.addEventListener("keydown", (e) => {
+  if (!W.st || e.target.closest?.("input")) return;
+  const k = e.key.toLowerCase();
+  if (k === " " || k === "k") { e.preventDefault(); toggle(); }
+  else if (k === "f") fullscreen();
+  else if (k === "m") $("mute").click();
+  else if ((k === "arrowleft" || k === "arrowright") && !isLive(W.st) && duration()) act("ctl", { op: "seek", pos: Math.max(0, Math.min(duration(), current() + (k === "arrowleft" ? -10 : 10))) });
+});
+
+// controls fade out while playing and the mouse is still
+{
+  let idleT = 0;
+  const wake = () => {
+    document.body.classList.remove("idle");
+    clearTimeout(idleT);
+    idleT = setTimeout(() => { if (W.st?.playing && !W.seekDrag && !document.querySelector(".bottom:hover, .top:hover")) document.body.classList.add("idle"); }, 2500);
+  };
+  document.addEventListener("pointermove", wake);
+  document.addEventListener("pointerdown", wake);
+  document.addEventListener("keydown", wake);
+  wake();
+}
+
+setInterval(() => { if (W.st) { sync(); renderBar(); } }, 1000);
+
+// ---------------------------------------------------------------- panel messages
+window.addEventListener("message", (e) => {
+  if (e.source !== parent) return;
+  const m = e.data;
+  if (m?.bunker === "message") { if (m.data?.error) toast(t(ERR[m.data.error] ?? m.data.error), true); return; }
+  if (m?.bunker !== "state") return;
+  const c = m.ctx ?? {};
+  W.ctx = c;
+  if (c.lang && c.lang !== LANG) { LANG = c.lang; applyLang(); }
+  const th = c.theme ?? {};
+  const root = document.documentElement.style;
+  if (th.bg) root.setProperty("--bg", th.bg);
+  if (th.text) root.setProperty("--text", th.text);
+  if (th.muted) root.setProperty("--muted", th.muted);
+  if (th.accent) root.setProperty("--accent", th.accent);
+  if (th.border) root.setProperty("--border", th.border);
+  if (th.hover) root.setProperty("--hover", th.hover);
+  const prevSeq = W.st?.seq;
+  W.st = m.state && typeof m.state === "object" ? m.state : null;
+  W.rx = Date.now() - (Number(c.age) || 0);
+  showEvent(W.st);
+  W.first = false;
+  if (!W.st || W.st.seq !== prevSeq) render();
+  if (W.st) sync();
+  else if (!$("empty").hidden) $("url").focus();
+});
+W.showQueue = store.get("queueOpen", false) === true;
+applyLang();
+parent.postMessage({ bunker: "ready" }, "*");
+</script>
+</body>
+</html>

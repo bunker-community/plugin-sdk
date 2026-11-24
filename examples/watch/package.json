@@ -1,0 +1,10 @@
+{
+  "name": "@bunker/plugin-watch",
+  "version": "1.0.0",
+  "description": "Watch together (plugin): synced YouTube / Twitch / Vimeo / video link / local file in voice channels",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@bunker-community/plugin-sdk": "*"
+  }
+}

@@ -11,7 +11,8 @@ export default definePlugin({
       if (c.lang === "tr") await c.reply(n === 1 ? `Merhaba ${c.nick}!` : `Merhaba ${c.nick}! Bu ${n}. selamın.`);
       else await c.reply(n === 1 ? `Hello ${c.nick}!` : `Hello ${c.nick}! That's greeting number ${n}.`);
     };
-    ctx.command("hello", greet);
+    // The description shows in the panel's command list while typing "!"
+    ctx.command("hello", greet, { description: "Say hello (counts your greetings)", tr: { description: "Selam ver (selamlarını sayar)" } });
     ctx.command("merhaba", greet);
 
     ctx.on("member.join", (e) => {
